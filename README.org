@@ -1,0 +1,15 @@
+* About
+Very simple Lisp interpreter in Rust.
+
+* Quick start
+#+begin_src console
+$ git clone https://github.com/shoumodip/lust
+$ cd lust
+$ cargo install --path .
+$ lust examples/scopes.scm
+#+end_src
+
+* TODO
+- [ ] Implement lexical scoping
+- [ ] Improve error messages
+- [ ] Create a standard library
