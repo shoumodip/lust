@@ -8,7 +8,6 @@ pub type Function = fn(Vec<Value>) -> Result;
 pub type Result = result::Result<Value, String>;
 
 #[derive(Clone)]
-#[allow(dead_code)]
 pub enum Value {
     Boolean(bool),
     Number(f64),
@@ -70,13 +69,6 @@ impl Scope {
             .insert(symbol, value);
     }
 
-    pub fn append(&mut self, symbol: String, value: Value) {
-        self.list
-            .last_mut()
-            .expect("100% rust bug not mine")
-            .insert(symbol, value);
-    }
-
     pub fn lookup(&self, symbol: String) -> Option<Value> {
         for env in self.list.iter().rev() {
             if let Some(value) = env.get(&symbol) {
@@ -113,7 +105,7 @@ impl Ast {
 
     pub fn define(&mut self, symbol: String, value: Value) {
         self.scopes
-            .last_mut()
+            .first_mut()
             .expect("100% rust bug not mine")
             .define(symbol, value);
     }
@@ -255,7 +247,11 @@ impl Ast {
                         }
                     }
 
-                    self.last_scope().push(env);
+                    if self.scopes.len() == 1 {
+                        self.push_scope(Scope::from(env));
+                    } else {
+                        self.last_scope().push(env);
+                    }
 
                     let mut result = Nil;
                     for expression in &arguments[1..] {
@@ -265,7 +261,11 @@ impl Ast {
                         }
                     }
 
-                    self.last_scope().pop();
+                    if self.scopes.len() == 2 {
+                        self.pop_scope();
+                    } else {
+                        self.last_scope().pop();
+                    }
                     Ok(result)
                 },
                 _ => Err("invalid form of scope".to_string())
