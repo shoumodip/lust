@@ -66,21 +66,21 @@ impl Ast {
     }
 
     pub fn lookup(&self, symbol: String) -> Result {
-        if self.calls.len() == 0 {
+        // if self.calls.len() == 0 {
             for env in self.env.iter().rev() {
                 if let Some(value) = env.get(&symbol) {
                     return Ok(value.clone());
                 }
             }
-        } else {
-            let last = self.env.len() - 1;
+        // } else {
+        //     let last = self.env.len() - 1;
 
-            if let Some(value) = self.env[0].get(&symbol) {
-                return Ok(value.clone());
-            } else if let Some(value) = self.env[last].get(&symbol) {
-                return Ok(value.clone());
-            }
-        }
+        //     if let Some(value) = self.env[0].get(&symbol) {
+        //         return Ok(value.clone());
+        //     } else if let Some(value) = self.env[last].get(&symbol) {
+        //         return Ok(value.clone());
+        //     }
+        // }
 
         Err(format!("undefined symbol '{}'", symbol))
     }
@@ -166,12 +166,75 @@ impl Ast {
         }
     }
 
+    pub fn eval_scope(&mut self, arguments: &[Value]) -> Result {
+        use Value::*;
+
+        if arguments.len() == 0 {
+            Ok(Nil)
+        } else {
+            match &arguments[0] {
+                List(scope) => {
+                    let mut env = Env::new();
+
+                    for binding in scope.iter() {
+                        match binding {
+                            List(binding) => match &binding[0] {
+                                Symbol(symbol) => match self.eval(binding[1].clone()) {
+                                    Ok(value) => { env.insert(symbol.to_string(), value); }
+                                    error => return error,
+                                },
+                                invalid => return Err(format!("invalid variable '{}'", invalid))
+                            },
+                            invalid => return Err(format!("invalid binding in scope '{}'", invalid))
+                        }
+                    }
+
+                    self.env.push(env);
+
+                    let mut result = Nil;
+                    for expression in &arguments[1..] {
+                        match self.eval(expression.clone()) {
+                            Ok(value) => result = value,
+                            error => return error,
+                        }
+                    }
+
+                    self.env.pop();
+                    Ok(result)
+                },
+                _ => Err("invalid form of scope".to_string())
+            }
+        }
+    }
+
     pub fn eval_call(&mut self, name: String, arguments: &[Value]) -> Result {
         use Value::*;
 
         match &name[..] {
             "define" => self.eval_define(arguments),
             "quote" => Ok(arguments[0].clone()),
+            "scope" => self.eval_scope(arguments),
+            "lambda" => {
+                if arguments.len() == 0 {
+                    Ok(Lambda(vec![], vec![]))
+                } else {
+                    match &arguments[0] {
+                        List(lambda_parameters) => {
+                            let mut parameters = vec![];
+
+                            for parameter in lambda_parameters {
+                                match parameter {
+                                    Symbol(s) => parameters.push(s.clone()),
+                                    invalid => return Err(format!("invalid parameter '{}'", invalid))
+                                }
+                            }
+
+                            Ok(Lambda(parameters, arguments[1..].to_vec()))
+                        },
+                        invalid => return Err(format!("invalid parameter list '{}'", invalid))
+                    }
+                }
+            }
 
             function => match self.lookup(function.to_string()) {
                 Ok(value) => match value {
@@ -219,7 +282,7 @@ impl Ast {
                     eprintln!("stack: ");
 
                     for call in &self.calls {
-                        eprintln!("{}", call);
+                        eprintln!("  {}", call);
                     }
                 }
 

@@ -1,22 +1,21 @@
 mod ast;
-mod lexer;
+mod parser;
 
 use std::fs;
 
-use ast::{Value, Ast};
-use lexer::Lexer;
-
-fn greet(name: Vec<Value>) -> ast::Result {
-    println!("Hello, {}!", name[0]);
-    Ok(Value::Nil)
+fn print(arguments: Vec<ast::Value>) -> ast::Result {
+    for argument in arguments {
+        println!("{}", argument);
+    }
+    Ok(ast::Value::Nil)
 }
 
 fn main() {
     let source = fs::read_to_string("lexer.scm").unwrap();
-    let tokens = Lexer::tokenize(source);
+    let tokens = parser::tokenize(source);
 
-    let mut ast = Ast::new(tokens);
+    let mut ast = ast::Ast::new(tokens);
 
-    ast.define("greet".to_string(), Value::Native(greet));
+    ast.define("print".to_string(), ast::Value::Native(print));
     ast.run();
 }

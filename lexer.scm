@@ -1,7 +1,6 @@
-(define name "world")
+(let echo      ; Global scope
+    (lambda (name)
+      (let ((string "YEAH")) ; Local scope
+        (print name string))))
 
-(greet 'name)
-(greet name)
-;; (greet 'name)
-;; (greet 'name)
-;; (greet 'name)
+(echo "lol")   ; Scope

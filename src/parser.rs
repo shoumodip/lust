@@ -1,14 +1,13 @@
 use std::process;
-
 use crate::ast::{Value, Result};
 
-pub struct Lexer {
+pub struct Parser {
     length: usize,
     source: Vec<char>,
     position: usize,
 }
 
-impl Lexer {
+impl Parser {
     pub fn new(source: String) -> Self {
         Self {
             length: source.len(),
@@ -54,6 +53,18 @@ impl Lexer {
         }
     }
 
+    pub fn parse_atom(&mut self, atom: &str) -> Value {
+        match atom {
+            "true" => Value::Boolean(true),
+            "false" => Value::Boolean(false),
+            "nil" => Value::Nil,
+            _ => match atom.parse::<f64>() {
+                Ok(number) => Value::Number(number),
+                Err(_) => Value::Symbol(atom.to_string())
+            }
+        }
+    }
+
     pub fn read_atom(&mut self) -> Result {
         let position = self.position;
 
@@ -63,16 +74,9 @@ impl Lexer {
             .iter()
             .collect::<String>();
 
-        let atom = match &atom[..] {
-            "true" => Value::Boolean(true),
-            "false" => Value::Boolean(false),
-            "nil" => Value::Nil,
-            atom => match atom.parse::<f64>() {
-                Ok(number) => Value::Number(number),
-                Err(_) => Value::Symbol(atom.to_string())
-            }
-        };
+        let atom = self.parse_atom(atom);
 
+        self.skip_whitespace();
         Ok(atom)
     }
 
@@ -90,7 +94,27 @@ impl Lexer {
                 .collect();
 
             self.advance();
+            self.skip_whitespace();
             Ok(Value::String(string))
+        }
+    }
+
+    pub fn parse_list(&mut self, list: &mut Vec<Value>) {
+        use Value::*;
+
+        if list.len() == 0 {
+            return;
+        }
+
+        if let Symbol(s) = &list[0] {
+            match &s[..] {
+                "let" => match &list[1] {
+                    Symbol(_) => list[0] = Symbol("define".to_string()),
+                    List(_) => list[0] = Symbol("scope".to_string()),
+                    _ => {}
+                },
+                _ => {}
+            }
         }
     }
 
@@ -109,6 +133,8 @@ impl Lexer {
             Err("unterminated parenthesis".to_string())
         } else {
             self.advance();
+            self.skip_whitespace();
+            self.parse_list(&mut list);
             Ok(Value::List(list))
         }
     }
@@ -128,7 +154,7 @@ impl Lexer {
         self.skip_whitespace();
 
         if let Some(character) = self.get_char() {
-            let token = match character {
+            match character {
                 '(' => self.read_list(),
                 ')' => Err("unbalanced parenthesis".to_string()),
                 '"' => self.read_string(),
@@ -142,30 +168,26 @@ impl Lexer {
                 },
 
                 _ => self.read_atom(),
-            };
-
-            self.skip_whitespace();
-            token
+            }
         } else {
-            self.skip_whitespace();
             Ok(Nil)
         }
     }
+}
 
-    pub fn tokenize(source: String) -> Vec<Value> {
-        let mut lexer = Lexer::new(source);
-        let mut tokens = vec![];
+pub fn tokenize(source: String) -> Vec<Value> {
+    let mut parser = Parser::new(source);
+    let mut tokens = vec![];
 
-        while lexer.position < lexer.length {
-            match lexer.read_token() {
-                Ok(token) => tokens.push(token),
-                Err(message) => {
-                    eprintln!("lust: {}", message);
-                    process::exit(1);
-                }
+    while parser.position < parser.length {
+        match parser.read_token() {
+            Ok(token) => tokens.push(token),
+            Err(message) => {
+                eprintln!("lust: {}", message);
+                process::exit(1);
             }
         }
-
-        tokens
     }
+
+    tokens
 }
