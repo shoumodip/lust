@@ -10,6 +10,8 @@ $ lust examples/scopes.scm
 #+end_src
 
 * TODO
-- [ ] Implement lexical scoping
+- [X] Implement lexical scoping
+- [ ] Implement the special forms
 - [ ] Improve error messages
 - [ ] Create a standard library
+- [ ] Implement macros

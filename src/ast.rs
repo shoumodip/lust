@@ -46,41 +46,107 @@ impl fmt::Display for Value {
     }
 }
 
+pub struct Scope {
+    list: Vec<Env>
+}
+
+impl Scope {
+    fn new() -> Self {
+        Self {
+            list: vec![Env::new()]
+        }
+    }
+
+    fn from(env: Env) -> Self {
+        Self {
+            list: vec![env]
+        }
+    }
+
+    pub fn define(&mut self, symbol: String, value: Value) {
+        self.list
+            .first_mut()
+            .expect("100% rust bug not mine")
+            .insert(symbol, value);
+    }
+
+    pub fn append(&mut self, symbol: String, value: Value) {
+        self.list
+            .last_mut()
+            .expect("100% rust bug not mine")
+            .insert(symbol, value);
+    }
+
+    pub fn lookup(&self, symbol: String) -> Option<Value> {
+        for env in self.list.iter().rev() {
+            if let Some(value) = env.get(&symbol) {
+                return Some(value.clone());
+            }
+        }
+
+        None
+    }
+
+    pub fn push(&mut self, env: Env) {
+        self.list.push(env);
+    }
+
+    pub fn pop(&mut self) {
+        self.list.pop();
+    }
+}
+
 pub struct Ast {
-    pub env: Vec<Env>,
     pub calls: Vec<String>,
+    pub scopes: Vec<Scope>,
     pub source: Vec<Value>,
 }
 
 impl Ast {
     pub fn new(source: Vec<Value>) -> Self {
         Self {
-            env: vec![Env::new()],
             calls: vec![],
+            scopes: vec![Scope::new()],
             source,
         }
     }
 
     pub fn define(&mut self, symbol: String, value: Value) {
-        self.env[0].insert(symbol, value);
+        self.scopes
+            .last_mut()
+            .expect("100% rust bug not mine")
+            .define(symbol, value);
+    }
+
+    pub fn last_scope(&mut self) -> &mut Scope {
+        self.scopes.last_mut()
+            .expect("100% rust bug not mine")
+    }
+
+    pub fn push_scope(&mut self, scope: Scope) {
+        self.scopes.push(scope);
+    }
+
+    pub fn pop_scope(&mut self) {
+        self.scopes.pop();
     }
 
     pub fn lookup(&self, symbol: String) -> Result {
-        // if self.calls.len() == 0 {
-            for env in self.env.iter().rev() {
-                if let Some(value) = env.get(&symbol) {
+        if self.calls.len() == 0 {
+            for scope in self.scopes.iter().rev() {
+                if let Some(value) = scope.lookup(symbol.clone()) {
                     return Ok(value.clone());
                 }
             }
-        // } else {
-        //     let last = self.env.len() - 1;
+        } else {
+            let last = self.scopes.len() - 1;
 
-        //     if let Some(value) = self.env[0].get(&symbol) {
-        //         return Ok(value.clone());
-        //     } else if let Some(value) = self.env[last].get(&symbol) {
-        //         return Ok(value.clone());
-        //     }
-        // }
+            if let Some(value) = self.scopes[0].lookup(symbol.clone()) {
+                return Ok(value.clone());
+            } else if let Some(value) = self.scopes[last].lookup(symbol.clone()) {
+                return Ok(value.clone());
+            }
+        }
 
         Err(format!("undefined symbol '{}'", symbol))
     }
@@ -130,7 +196,7 @@ impl Ast {
                 }
             }
 
-            self.env.push(env);
+            self.push_scope(Scope::from(env));
             self.calls.push(name);
 
             let mut result = Nil;
@@ -141,7 +207,7 @@ impl Ast {
                 }
             }
 
-            self.env.pop();
+            self.pop_scope();
             self.calls.pop();
             Ok(result)
         }
@@ -189,7 +255,7 @@ impl Ast {
                         }
                     }
 
-                    self.env.push(env);
+                    self.last_scope().push(env);
 
                     let mut result = Nil;
                     for expression in &arguments[1..] {
@@ -199,7 +265,7 @@ impl Ast {
                         }
                     }
 
-                    self.env.pop();
+                    self.last_scope().pop();
                     Ok(result)
                 },
                 _ => Err("invalid form of scope".to_string())
@@ -279,10 +345,8 @@ impl Ast {
                 eprintln!("lust: {}", message);
 
                 if self.calls.len() > 0 {
-                    eprintln!("stack: ");
-
-                    for call in &self.calls {
-                        eprintln!("  {}", call);
+                    for call in self.calls.iter().rev() {
+                        eprintln!("In {}()", call);
                     }
                 }
 
