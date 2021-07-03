@@ -5,6 +5,7 @@ pub struct Parser {
     length: usize,
     source: Vec<char>,
     position: usize,
+    line: usize
 }
 
 impl Parser {
@@ -13,6 +14,7 @@ impl Parser {
             length: source.len(),
             source: source.chars().collect(),
             position: 0,
+            line: 1
         }
     }
 
@@ -30,6 +32,9 @@ impl Parser {
 
     pub fn advance(&mut self) {
         if !self.is_at_end() {
+            if self.get_char() == Some('\n') {
+                self.line += 1;
+            }
             self.position += 1;
         }
     }
@@ -179,10 +184,12 @@ pub fn tokenize(source: String) -> Vec<Value> {
     let mut tokens = vec![];
 
     while parser.position < parser.length {
+        let line = parser.line;
+
         match parser.read_token() {
             Ok(token) => tokens.push(token),
             Err(message) => {
-                eprintln!("lust: {}", message);
+                eprintln!("[line {}] {}", line, message);
                 process::exit(1);
             }
         }

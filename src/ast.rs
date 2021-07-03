@@ -222,7 +222,7 @@ impl Ast {
                        body: Vec<Value>) -> Result
     {
         if parameters.len() != arguments.len() {
-            Err(format!("{}() takes {} parameter(s), found {} instead",
+            Err(format!("function '{}' takes {} parameter(s), found {} instead",
                         name,
                         parameters.len(),
                         arguments.len()))
@@ -449,7 +449,7 @@ impl Ast {
             match self.eval(expression) {
                 Ok(value) => result = value,
                 Err(message) => {
-                    eprintln!("lust: {}", message);
+                    eprintln!("error: {}", message);
 
                     if self.calls.len() > 0 {
                         for call in self.calls.iter().rev() {
