@@ -18,6 +18,16 @@ pub enum Value {
     Nil,
 }
 
+pub fn is_true(value: &Value) -> bool {
+    use Value::*;
+    match value {
+        Number(n) if *n == 0.0 => false,
+        Boolean(false) => false,
+        Nil => false,
+        _ => true
+    }
+}
+
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use Value::*;
@@ -173,8 +183,6 @@ impl Ast {
                        arguments: &[Value],
                        body: Vec<Value>) -> Result
     {
-        use Value::Nil;
-
         if parameters.len() != arguments.len() {
             Err(format!("{}() takes {} parameter(s), found {} instead",
                         name,
@@ -195,17 +203,14 @@ impl Ast {
             self.push_scope(Scope::from(env));
             self.calls.push(name);
 
-            let mut result = Nil;
-            for expression in body {
-                match self.eval(expression) {
-                    Ok(value) => result = value,
-                    error => return error,
-                }
+            let result = self.eval_do(&body);
+
+            if let Ok(_) = result {
+                self.calls.pop();
             }
 
             self.pop_scope();
-            self.calls.pop();
-            Ok(result)
+            result
         }
     }
 
@@ -242,6 +247,37 @@ impl Ast {
         Ok(result)
     }
 
+    pub fn eval_if(&mut self, arguments: &[Value]) -> Result {
+        use Value::*;
+
+        if arguments.len() == 0 {
+            Ok(Nil)
+        } else {
+            let branch = if is_true(&arguments[0]) {1} else {2};
+
+            if arguments.len() <= branch {
+                Ok(Nil)
+            } else {
+                self.eval(arguments[branch].clone())
+            }
+        }
+    }
+
+    pub fn eval_while(&mut self, arguments: &[Value]) -> Result {
+        use Value::*;
+
+        if arguments.len() > 0 {
+            while is_true(&arguments[0]) {
+                match self.eval_do(&arguments[1..]) {
+                    Ok(_) => {},
+                    error => return error
+                };
+            }
+        }
+
+        Ok(Nil)
+    }
+
     pub fn eval_let(&mut self, arguments: &[Value]) -> Result {
         use Value::*;
 
@@ -266,17 +302,9 @@ impl Ast {
                     }
 
                     self.last_scope().push(env);
-
-                    let mut result = Nil;
-                    for expression in &arguments[1..] {
-                        match self.eval(expression.clone()) {
-                            Ok(value) => result = value,
-                            error => return error,
-                        }
-                    }
-
+                    let result = self.eval_do(&arguments[1..]);
                     self.last_scope().pop();
-                    Ok(result)
+                    result
                 },
                 _ => Err("invalid form of scope".to_string())
             }
@@ -291,6 +319,8 @@ impl Ast {
             "quote" => Ok(arguments[0].clone()),
             "let" => self.eval_let(arguments),
             "do" => self.eval_do(arguments),
+            "if" => self.eval_if(arguments),
+            "while" => self.eval_while(arguments),
             "lambda" => {
                 if arguments.len() == 0 {
                     Ok(Lambda(vec![], vec![]))

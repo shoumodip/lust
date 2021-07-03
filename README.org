@@ -9,9 +9,9 @@ $ cargo install --path .
 $ lust examples/scopes.scm
 #+end_src
 
-* TODO
+* TODO [2/5]
 - [X] Implement lexical scoping
-- [ ] Implement the special forms
+- [X] Implement the special forms
 - [ ] Improve error messages
 - [ ] Create a standard library
 - [ ] Implement macros

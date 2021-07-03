@@ -1,17 +1,12 @@
 mod ast;
 mod parser;
+mod stdlib;
 
 use std::io::{self, Write};
 use std::fs;
 use std::env;
 use std::process;
-
-fn print(arguments: Vec<ast::Value>) -> ast::Result {
-    for argument in arguments {
-        println!("{}", argument);
-    }
-    Ok(ast::Value::Nil)
-}
+use ast::Ast;
 
 fn run_file(file_path: &str) {
     let source = fs::read_to_string(file_path).unwrap_or_else(|error| {
@@ -19,8 +14,8 @@ fn run_file(file_path: &str) {
         process::exit(1);
     });
 
-    let mut ast = ast::Ast::new();
-    ast.define("print".to_string(), ast::Value::Native(print));
+    let mut ast = Ast::new();
+    stdlib::load(&mut ast);
 
     let tokens = parser::tokenize(source);
     match ast.run(tokens) {
@@ -31,9 +26,9 @@ fn run_file(file_path: &str) {
 
 fn repl() {
     let mut buffer;
-    let mut ast = ast::Ast::new();
+    let mut ast = Ast::new();
 
-    ast.define("print".to_string(), ast::Value::Native(print));
+    stdlib::load(&mut ast);
 
     loop {
         print!("> ");

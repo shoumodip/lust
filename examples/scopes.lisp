@@ -1,6 +1,6 @@
 (let test
     (lambda ()
-      (echo "YEah")))
+      (echo "Not gonna work!")))
 
 (let ((echo
        (lambda (name)
