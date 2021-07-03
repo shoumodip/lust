@@ -1,6 +1,5 @@
 use std::fmt;
 use std::result;
-use std::process;
 use std::collections::HashMap;
 
 pub type Env = HashMap<String, Value>;
@@ -50,16 +49,20 @@ pub struct Scope {
 }
 
 impl Scope {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             list: vec![Env::new()]
         }
     }
 
-    fn from(env: Env) -> Self {
+    pub fn from(env: Env) -> Self {
         Self {
             list: vec![env]
         }
+    }
+
+    pub fn first(&self) -> &Env {
+        &self.list[0]
     }
 
     pub fn define(&mut self, symbol: String, value: Value) {
@@ -91,15 +94,13 @@ impl Scope {
 pub struct Ast {
     pub calls: Vec<String>,
     pub scopes: Vec<Scope>,
-    pub source: Vec<Value>,
 }
 
 impl Ast {
-    pub fn new(source: Vec<Value>) -> Self {
+    pub fn new() -> Self {
         Self {
             calls: vec![],
             scopes: vec![Scope::new()],
-            source,
         }
     }
 
@@ -133,9 +134,11 @@ impl Ast {
         } else {
             let last = self.scopes.len() - 1;
 
-            if let Some(value) = self.scopes[0].lookup(symbol.clone()) {
+            if let Some(value) = self.scopes[last].lookup(symbol.clone()) {
                 return Ok(value.clone());
-            } else if let Some(value) = self.scopes[last].lookup(symbol.clone()) {
+            }
+
+            if let Some(value) = self.scopes[0].first().get(&symbol) {
                 return Ok(value.clone());
             }
         }
@@ -173,7 +176,8 @@ impl Ast {
         use Value::Nil;
 
         if parameters.len() != arguments.len() {
-            Err(format!("expected {} parameters, found {} instead",
+            Err(format!("{}() takes {} parameter(s), found {} instead",
+                        name,
                         parameters.len(),
                         arguments.len()))
         } else {
@@ -224,7 +228,21 @@ impl Ast {
         }
     }
 
-    pub fn eval_scope(&mut self, arguments: &[Value]) -> Result {
+    pub fn eval_do(&mut self, body: &[Value]) -> Result {
+        use Value::*;
+
+        let mut result = Nil;
+        for expression in body {
+            match self.eval(expression.clone()) {
+                Ok(value) => result = value,
+                error => return error,
+            }
+        }
+
+        Ok(result)
+    }
+
+    pub fn eval_let(&mut self, arguments: &[Value]) -> Result {
         use Value::*;
 
         if arguments.len() == 0 {
@@ -247,11 +265,7 @@ impl Ast {
                         }
                     }
 
-                    if self.scopes.len() == 1 {
-                        self.push_scope(Scope::from(env));
-                    } else {
-                        self.last_scope().push(env);
-                    }
+                    self.last_scope().push(env);
 
                     let mut result = Nil;
                     for expression in &arguments[1..] {
@@ -261,11 +275,7 @@ impl Ast {
                         }
                     }
 
-                    if self.scopes.len() == 2 {
-                        self.pop_scope();
-                    } else {
-                        self.last_scope().pop();
-                    }
+                    self.last_scope().pop();
                     Ok(result)
                 },
                 _ => Err("invalid form of scope".to_string())
@@ -279,7 +289,8 @@ impl Ast {
         match &name[..] {
             "define" => self.eval_define(arguments),
             "quote" => Ok(arguments[0].clone()),
-            "scope" => self.eval_scope(arguments),
+            "let" => self.eval_let(arguments),
+            "do" => self.eval_do(arguments),
             "lambda" => {
                 if arguments.len() == 0 {
                     Ok(Lambda(vec![], vec![]))
@@ -339,19 +350,26 @@ impl Ast {
         }
     }
 
-    pub fn run(&mut self) {
-        for expression in self.source.clone() {
-            self.eval(expression).unwrap_or_else(|message| {
-                eprintln!("lust: {}", message);
+    pub fn run(&mut self, source: Vec<Value>) -> Option<Value> {
+        let mut result = Value::Nil;
 
-                if self.calls.len() > 0 {
-                    for call in self.calls.iter().rev() {
-                        eprintln!("In {}()", call);
+        for expression in source.clone() {
+            match self.eval(expression) {
+                Ok(value) => result = value,
+                Err(message) => {
+                    eprintln!("lust: {}", message);
+
+                    if self.calls.len() > 0 {
+                        for call in self.calls.iter().rev() {
+                            eprintln!("In {}()", call);
+                        }
                     }
-                }
 
-                process::exit(1);
-            });
+                    return None
+                }
+            }
         }
+
+        Some(result)
     }
 }

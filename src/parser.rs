@@ -110,7 +110,6 @@ impl Parser {
             match &s[..] {
                 "let" => match &list[1] {
                     Symbol(_) => list[0] = Symbol("define".to_string()),
-                    List(_) => list[0] = Symbol("scope".to_string()),
                     _ => {}
                 },
                 _ => {}
