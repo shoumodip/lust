@@ -75,6 +75,10 @@ impl Scope {
         &self.list[0]
     }
 
+    pub fn first_mut(&mut self) -> &mut Env {
+        &mut self.list[0]
+    }
+
     pub fn define(&mut self, symbol: String, value: Value) {
         self.list
             .first_mut()
@@ -82,10 +86,20 @@ impl Scope {
             .insert(symbol, value);
     }
 
-    pub fn lookup(&self, symbol: String) -> Option<Value> {
+    pub fn lookup(&self, symbol: &String) -> Option<Value> {
         for env in self.list.iter().rev() {
-            if let Some(value) = env.get(&symbol) {
+            if let Some(value) = env.get(symbol) {
                 return Some(value.clone());
+            }
+        }
+
+        None
+    }
+
+    pub fn lookup_mut(&mut self, symbol: &String) -> Option<&mut Value> {
+        for env in self.list.iter_mut().rev() {
+            if let Some(value) = env.get_mut(symbol) {
+                return Some(value);
             }
         }
 
@@ -137,19 +151,43 @@ impl Ast {
     pub fn lookup(&self, symbol: String) -> Result {
         if self.calls.len() == 0 {
             for scope in self.scopes.iter().rev() {
-                if let Some(value) = scope.lookup(symbol.clone()) {
+                if let Some(value) = scope.lookup(&symbol) {
                     return Ok(value.clone());
                 }
             }
         } else {
             let last = self.scopes.len() - 1;
 
-            if let Some(value) = self.scopes[last].lookup(symbol.clone()) {
+            if let Some(value) = self.scopes[last].lookup(&symbol) {
                 return Ok(value.clone());
             }
 
             if let Some(value) = self.scopes[0].first().get(&symbol) {
                 return Ok(value.clone());
+            }
+        }
+
+        Err(format!("undefined symbol '{}'", symbol))
+    }
+
+    pub fn scope_set(&mut self, symbol: String, value: Value) -> Result {
+        use Value::*;
+        if self.calls.len() == 0 {
+            for scope in self.scopes.iter_mut().rev() {
+                if let Some(symbol) = scope.lookup_mut(&symbol) {
+                    *symbol = value;
+                    return Ok(Nil);
+                }
+            }
+        } else {
+            let last = self.scopes.len() - 1;
+
+            if let Some(symbol) = self.scopes[last].lookup_mut(&symbol) {
+                *symbol = value;
+                return Ok(Nil);
+            } else if let Some(symbol) = self.scopes[0].first_mut().get_mut(&symbol) {
+               *symbol = value;
+                return Ok(Nil);
             }
         }
 
@@ -214,22 +252,41 @@ impl Ast {
         }
     }
 
-    pub fn eval_define(&mut self, arguments: &[Value]) -> Result {
+    pub fn eval_set(&mut self, arguments: &[Value]) -> Result {
         use Value::*;
         if arguments.len() < 2 {
-            Err(format!("expected variable name and value, instead received {} arguments",
+            Err(format!("expected variable name and value, instead received {} argument(s)",
                         arguments.len()))
         } else {
             match arguments[0].clone() {
                 Symbol(variable) => match self.eval(arguments[1].clone()) {
-                    Ok(value) => {
-                        self.define(variable, value);
-                        Ok(Nil)
-                    },
+                    Ok(value) => self.scope_set(variable, value),
                     error => error
                 },
                 invalid => Err(format!("invalid variable '{}'", invalid))
             }
+        }
+    }
+
+    pub fn eval_define(&mut self, arguments: &[Value]) -> Result {
+        use Value::*;
+
+        let mut value = Nil;
+        match arguments.len() {
+            1 => {},
+            2 => value = arguments[1].clone(),
+            _ => return Err("improper form of define".to_string())
+        }
+
+        match arguments[0].clone() {
+            Symbol(variable) => match self.eval(value) {
+                Ok(value) => {
+                    self.define(variable, value);
+                    Ok(Nil)
+                },
+                error => error,
+            },
+            invalid => Err(format!("invalid variable '{}'", invalid))
         }
     }
 
@@ -267,11 +324,15 @@ impl Ast {
         use Value::*;
 
         if arguments.len() > 0 {
-            while is_true(&arguments[0]) {
-                match self.eval_do(&arguments[1..]) {
-                    Ok(_) => {},
+            loop {
+                match self.eval(arguments[0].clone()) {
+                    Ok(value) if !is_true(&value) => break,
+                    Ok(_) => match self.eval_do(&arguments[1..]) {
+                        Ok(_) => {},
+                        error => return error
+                    },
                     error => return error
-                };
+                }
             }
         }
 
@@ -318,6 +379,7 @@ impl Ast {
             "define" => self.eval_define(arguments),
             "quote" => Ok(arguments[0].clone()),
             "let" => self.eval_let(arguments),
+            "set" => self.eval_set(arguments),
             "do" => self.eval_do(arguments),
             "if" => self.eval_if(arguments),
             "while" => self.eval_while(arguments),

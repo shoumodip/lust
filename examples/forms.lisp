@@ -19,3 +19,9 @@
 (if 0                                   ; Make fun of Lua!
     (print "Lua devs be like: What? This is crap! I bet this language even has crappy 0-based indices!")
     (print "Normal devs be like: well duh"))
+
+
+(let ((i 1))
+  (while (<= i 10)                      ; While loops
+    (print i)
+    (set i (+ i 1))))
