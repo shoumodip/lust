@@ -1,0 +1,832 @@
+* About
+This document will showcase the usage of Lust through tons of
+examples. The general idea is that you, the reader, will pick up on
+the patterns and learn the language as a side effect.
+
+Note that everything showcased here holds true for *all* dialects of
+lisp, the only thing that differs is the function names and the
+implemented special forms. Throughout the document I will switch
+between the terms "lisp" and "lust". Don't think twice about it.
+
+This document will also refer to Javascript in order to explaing the
+workings of lisp, as I believe it is a good scripting language with a
+decent syntax. Now if only it had static typing without a language
+transpiler...
+
+Also note that the entire concept of lisp will be introduced in this
+document, since I don't wish to assume the knowledge level of the
+reader. If you already know lisp, you would be better off reading the
+[[https://github.com/shoumodip/lust/blob/main/docs/stdlib.org][Standard Library Documentation]].
+
+* Expressions
+Lust is a dialect of [[https://en.wikipedia.org/wiki/Lisp_(programming_language)][Lisp]], therefore everything in the program is
+described as a series of expressions.
+
+An expression can be of four fundamental types.
+
+** Numbers
+Exactly what it sounds like. Both floating point and integer numbers
+are supported, though internally everything is represented as a
+floating point decimal anyway.
+
+#+begin_src lisp
+45
+45.0
+#+end_src
+
+** Strings
+A list of character enclosed by double quotes. For now, backslashed
+characters are not supported, because I don't really have any
+incentive for doing so.
+
+#+begin_src lisp
+"This is a string"
+#+end_src
+
+** Booleans
+A boolean.
+
+#+begin_src lisp
+true  ; => true
+false ; => false
+#+end_src
+
+** Symbols
+A symbol is like variables in "conventional" languages. The thing
+which separates it from other languages is that a symbol in Lust can
+consist of /any/ character except parenthesis and spaces. Additionally
+a symbol cannot start with a single quote (~'~), double quote (="=), backtick, or
+a comma (~,~).
+
+#+begin_src lisp
+variable
++-*/%valid-variable_NAME
+#+end_src
+
+** Lists
+A list is a collection of expressions bounded by parenthesis. It is
+like a molecule, in chemistry lingo.
+
+#+begin_src lisp
+(+ 2 3 4)
+#+end_src
+
+A list can also be nexted. For example the following expression is
+perfectly valid.
+
+#+begin_src lisp
+(+ 2 3 (/ 4 5))
+#+end_src
+
+** Nil
+Like ~null~ in Javascript. It stands for the absence of any real value.
+
+#+begin_src lisp
+nil ; => nil
+#+end_src
+
+* Evaluations
+There are very few rules for evaluations in Lust. It only depends on
+the type of expression you are trying to evaluate.
+
+To reuse our chemistry lingo, all expressions except lists and symbols
+are considered as atoms. They are the fundamental building blocks of a
+Lust program which cannot be evaluated further. They simply evaluate
+to themselves.
+
+** Numbers
+Numbers evaluate to themselves.
+
+#+begin_src lisp
+4    ; => 4.0
+65.0 ; => 65.0
+#+end_src
+
+Notice the conversion from interger to float. All numbers are floating
+point decimals under the hood in Lust.
+
+** Strings
+Strings are also atoms
+
+#+begin_src lisp
+"This is a string" ; => "This is a string"
+"Hello, world"     ; => "Hello, world"
+#+end_src
+
+** Symbols
+Symbols evaluate to the value they are bound to. They /can/ be thought
+of as variables, but symbols can also evaluate to macros and
+functions, therefore that terminology is not really accurate.
+
+#+begin_src lisp
+variable ; => value of variable
+print    ; => The native function 'print'
+map      ; => The lambda function 'map'
+#+end_src
+
+** Lists
+Think of a list evaluation as a function call. The first element of
+the list is considered as the function, while the rest of the elements
+are the arguments.
+
+#+begin_src lisp
+(+ 2 3 4)
+#+end_src
+
+In a language like, say JavaScript, you would do the following to
+achieve the same.
+
+#+begin_src javascript
+plus(2, 3, 4)
+#+end_src
+
+I think you can guess how a nested list is evaluated. Here's an
+example.
+
+#+begin_src lisp
+(+ 2 3 (/ 5 2))
+#+end_src
+
+Here's the Javascript version.
+
+#+begin_src javascript
+plus(2, 3, div(5, 2))
+#+end_src
+
+Here's another.
+
+#+begin_src lisp
+(+ 2 4 (- 4 5 (* 4 6)) (% 3 4))
+#+end_src
+
+The Javascript version.
+
+#+begin_src javascript
+plus(2, 4, minus(4, 5, multiply(4, 6)), modulo(3, 4))
+#+end_src
+
+* Quotation
+Quote prevents an expression from evaluation. It seems weird as first
+to beginners, but in reality, it is a major reason as to why lisp is
+considered the most powerful programming language in existence.
+
+Here's an example. As described in the previous section about
+evaluation rules for list, a list is like a function call. Therefore
+to "quote" a value, you call the function quote on it.
+
+#+begin_src lisp
+(quote 5) ; => 5
+#+end_src
+
+It's that simple, the quotation of 5 is 5. Now, in this context, this
+seems obvious. However that is because numbers and strings are atoms,
+they anyway evaluate to themselves. The interesting part is when we
+apply quotation on expressions which do not evaluate to themselves.
+
+Considering quotation is a really important part of lisp, there exists
+a shorthand for it.
+
+#+begin_src lisp
+'5 ; => (quote 5) => 5
+#+end_src
+
+To quote an expression, you prepend it with a single quote. This is
+precisely the reason why a symbol cannot start with a single quote.
+
+** Wrong concept
+Let's try to imagine this in the Javascript POV from our previous
+knowledge about lists.
+
+#+begin_src javascript
+quote(2(3, 4))
+#+end_src
+
+The function ~2~ is called with the arguments ~3~ and ~4~, and the
+result is passed to quote. This is the obvious solution, and yet the
+incorrect one.
+
+** Correct concept
+I mentioned quotation /prevents an expression from evaluation/. A list
+is evaluated as a function call, so when we prevent it from
+evaluation, *it stays as a list*.
+
+#+begin_src javascript
+[2, 3, 4]
+#+end_src
+
+This is the Javascript representation of what the quotation of list
+results in.
+
+* Code is Data, Data is Code
+How do you call a function in lisp?
+
+#+begin_src lisp
+(+ 1 2 3) ; => 6.0
+#+end_src
+
+How do you create a List/Vector in lisp?
+
+#+begin_src lisp
+'(+ 1 2 3) ; => (+ 1 2 3)
+#+end_src
+
+To create a list, you take a function call and prevent it from
+evaluation. Run that over in your head once more. The only thing which
+distinguises between Data (a List) and Code (a function call), is
+*whether it is evaluated or not*. Unevaluated code is data, and
+evaluated data is code.
+
+Code is Data, Data is Code.
+
+* Quotations of symbols
+Say there is a symbol defined in the global scope. We won't go into
+details till later, just think of it like this for now.
+
+#+begin_src javascript
+var meaning_of_life = 42
+#+end_src
+
+This is how it is evaluated as Code.
+
+#+begin_src lisp
+meaning_of_life ; => 42.0
+#+end_src
+
+And this is how it is evaluated as Data.
+
+#+begin_src lisp
+'meaning_of_life ; => meaning_of_life
+#+end_src
+
+* Quasi quotation
+This is data, not code.
+
+#+begin_src lisp
+'(1 2 3 (* 2 2)) ; => (1 2 (+ 1 2))
+#+end_src
+
+But what if we want it to behave partially as data and partially as
+code. Specifically, I want the ~(+ 1 2)~ part to be evaluated as code,
+and the rest to remain as data.
+
+#+begin_src javascript
+[1, 2, 3, multiply(2, 2)] // This is what I want
+#+end_src
+
+Here's when quasi-quotation comes into play.
+
+#+begin_src lisp
+(quasi-quote
+ (1 2 3
+    (unquote (* 2 2))))
+#+end_src
+
+The concept is simple. Everything inside ~unquote~ is *evaluated* and
+treated as code, while everything not inside ~unquote~ is prevented from
+evaluation and is treated as data.
+
+So here, the ~(* 2 2)~ is evaluated, while the rest is not. Basically
+it yields the result we want.
+
+#+begin_src lisp
+(quasi-quote (1 2 3 (unquote (* 2 2))))
+
+(quasi-quote (1 2 3 4)) ; => (* 2 2) => 4
+(1 2 3 4)               ; => (quote (1 2 3 4)) => (1 2 3 4)
+#+end_src
+
+Of course, there exists shorthands for this extremely common
+operation. The above example for example could be written as follows.
+
+#+begin_src lisp
+`(1 2 3 ,(* 2 2))
+#+end_src
+
+The backtick (~`~) starts quasi-quotation, while the comma (~,~)
+performs unquotation.
+
+#+begin_quote
+Can (unquote) work inside the single-quote quotation?
+#+end_quote
+
+Let's find out shall we?
+
+#+begin_src lisp
+'(1 2 3 ,(* 2 2)) ; => (1 2 3 (unquote (* 2 2)))
+#+end_src
+
+Quotation using the single quote is ultimate quotation, everything
+inside the expression is treated as data, no exceptions.
+
+* Branching
+If statements.
+
+#+begin_src lisp
+(if CONDITION
+    CONSEQUENCE
+  ANTECEDENCE)
+#+end_src
+
+An example here. Let's say the function ~print~ prints its arguments
+to standard output, while the function ~even~ checks if something is
+even or odd.
+
+#+begin_src lisp
+(if (even 4)
+    (print "even")
+  (print "odd"))
+#+end_src
+
+What's this? Isn't this the syntax used for function calling? Does
+that mean, if-else is a function?
+
+Let's try to guess how evaluation works here. In a function call, the
+arguments are evaluated in order, and the results of the all the
+evalutions are used to call the function. So that means, the arguments
+~(even 4)~, ~(print "even")~ and ~(print "odd")~ are evaluated first,
+then they are passed on to the function ~if~.
+
+So this expression should print ~even~ and ~odd~ both, thereby making
+the condition useless in the first place.
+
+#+begin_src console
+$ lust branch.lisp
+even
+#+end_src
+
+Hmmm, it didn't print ~odd~. How strange.
+
+The ~if~ statement displayed here is a primer of what is termed
+"special forms" in lisp. They look like functions and for most of the
+part behave like functions. It's just there is that small factor which
+sets it apart. In case of ~if~, the arguments are conditionally
+evaluated.
+
+This leads to an interesting question. If branching behaves
+differently than function calling, why does the syntax ressemble that
+of one? Isn't it better to do something along the lines of ~if () {}
+else {}~ or something? That way we have less confusion!
+
+#+begin_src console
+$ touch expression.lisp
+#+end_src
+
+#+begin_src lisp
+;; FILE: expression.lisp
+(print 
+ (if (even 4)
+     (+ 2 3)
+   2))
+#+end_src
+
+#+begin_src console
+$ lust expression.lisp
+5
+#+end_src
+
+That's right. The ~if~ form returns the evaluation of the expression
+depending on the condition. Here the expression which is evaluated is
+~(+ 2 3)~. Therefore it is written in the same syntax as a function
+call. It's not just a linguistic advantage, it's also a linguistic
+advantage.
+
+* Blocks
+#+begin_src lisp
+(do
+ EXPRESSION-1
+ EXPRESSION-2
+ ...)
+#+end_src
+
+Can your "code and data is same" lisp do this?
+
+#+begin_src javascript
+if user.madeFunOfLisp() {
+    console.log("Congratulations!")
+    console.log("You did the right decision")
+    console.log("Use JS! Everything else sucks!")
+} else {
+    console.log("LISP: Lots of Irritation Superfluous Parenthesis")
+}
+#+end_src
+
+Response of the Lisp chad.
+
+#+begin_src lisp
+(if code::failed_in_production
+    (do
+     (print "It's javascript! What did you expect?")
+     (print "That's the price you way for a dynamically typed JIT language"))
+  (print "Rust would like to: know your location"))
+#+end_src
+
+The ~do~ returns the value of the last expression evaluated within it.
+
+* More special forms
+- While loops
+#+begin_src lisp
+(while true
+  (print "yOu ArE hAcKeD!")
+  (print "This is infinite!"))
+#+end_src
+
+- Only the consequence in an if-expression
+#+begin_src lisp
+(when true
+  (print "It is true")
+  (print "It is true")
+  (print "It is true"))
+#+end_src
+
+- The reverse of ~when~
+#+begin_src lisp
+(unless false
+  (print "It is true")
+  (print "It is true")
+  (print "It is true"))
+#+end_src
+
+- Foreach
+#+begin_src lisp
+(dolist (i '(1 2 3 4))
+  (print "The value of i:")
+  (print i))
+#+end_src
+
+* Lambdas
+A lambda is a special form in lisp which evaluates to what we know of
+as functions in "conventional languages".
+
+#+begin_src javascript
+function (a, b) {
+    console.log("Adding two numbers!")
+    return a + b
+}
+#+end_src
+
+In lisp we would write it as follows.
+
+#+begin_src lisp
+(lambda (a b)
+  (print "Adding two numbers!")
+  (+ a b))
+#+end_src
+
+The last expression is returned implicitly, like in Ruby. The lambda
+form consist of a list of parameters and the body of the lambda.
+
+Here's a fun one for ya.
+
+#+begin_src  lisp
+(lambda (a b)
+  (print "Adding two numbers!")
+  (+ a b))
+
+'(lambda (a b)
+   (print "Adding two numbers!")
+   (+ a b))
+#+end_src
+
+What's the difference between these two?
+
+* Symbols
+** Definitions
+#+begin_src javascript
+var variable1 = 69, variable2 = 420
+#+end_src
+
+This is how you do it.
+#+begin_src lisp
+(let variable1 69)
+(let variable2 420)
+#+end_src
+
+This works too.
+#+begin_src lisp
+(let variable1 69
+     variable2 420)
+#+end_src
+
+** Undefined
+#+begin_src javascript
+var thisVarIsNotDefined = null
+#+end_src
+
+This is how you do it.
+#+begin_src lisp
+(let this/var-is-not-defined) ; Flex on JS users who can't use special characters in variable names
+#+end_src
+
+This works too.
+#+begin_src lisp
+(let this/var-is-not-defined nil)
+#+end_src
+
+** Assignment
+#+begin_src javascript
+var message
+message = "Hello, world"
+#+end_src
+
+Lust can do it.
+#+begin_src lisp
+(let message)
+(set message "Hello, world")
+#+end_src
+
+Why you would write code like this is a question best left alone...
+
+** Local variables
+I don't know about Javascript that much, but I do know rust has this
+feature. So let's see a rust example this time.
+
+#+begin_src rust
+let variable = 69;
+println!("global: {}", variable); // global: 69
+
+{
+    let variable = true;
+    println!("local: {}", variable); // local: true
+}
+
+println!("global: {}", variable); // global: 69
+#+end_src
+
+In lust, this is how you do this.
+
+#+begin_src lisp
+(let variable 69)
+(print (concat "global: " variable))    ; global: 69
+
+(let ((variable true))
+  (print (concat "local: " variable)))  ; local: true
+
+(print (concat "global: " variable))    ; global: 69
+#+end_src
+
+The abstract representation of the special form is as follows.
+
+#+begin_src lisp
+(let ((VARIABLE [VALUE])
+      (VARIABLE [VALUE])
+      ...)
+  BODY)
+#+end_src
+
+The existence of all local variables cease to exist outside of the
+~let~ expression.
+
+BTW, take a look at this.
+
+#+begin_src lisp
+;; No existence of any symbol named 'global' here.
+;; The expression (print global) would throw an error
+
+(let ((local 69))
+  (print (concat "local: " local))           ; => local: 69
+  (let global 420)                           ; Defines a global variable, not a local one
+  (print (concat "global in let: " global))) ; => global in let: 420
+
+(print global) ; => 420
+#+end_src
+
+Can your javascript do that?
+
+** Functions
+Define a function which doubles a number.
+
+#+begin_src lisp
+(let double
+  (lambda (n)
+    (* n 2)))
+
+(print (double 45)) ; => 90
+#+end_src
+
+* Macro theory
+Most probably this is what comes to your mind when I speak of macros.
+
+#+begin_src c
+#define N 30
+#define LENGTH(array) (sizeof(array) / sizeof(array[0]))
+#+end_src
+
+While you are not really wrong in your assumption, it's horribly
+understating the powers of macros in lisp. It's synonymous to using
+the phrase "sligtly intelligent" to describe Einstein. While not
+wrong, it is not correct either.
+
+Macros in lisp are basically code transformers. You pass some code to
+a macro, and it will transform it for you. It looks and behaves like
+normal functions, and for the most part, it /is/ a normal
+function. The only distinguishing feature of a macro is that *the
+arguments are not evaluated before calling the macro*.
+
+Remember the ~if~ expression, where it was revealed that not every
+function needs to have its arguments evaluated for it to act as one.
+A macro is like that. What this means, it lets you define custom
+special forms.
+
+#+begin_src lisp
+(macro
+ (PARAMETERS)
+ BODY)
+#+end_src
+
+This is how you define a macro.
+
+* Macro example
+In case you don't remember from earlier, here is an example of it.
+
+#+begin_src lisp
+(dolist (i '(1 2 3 4 5))
+  (print "This is the value of i:")
+  (print i))
+#+end_src
+
+Some languages have this feature, some don't. In the languages which
+don't, you are stuck with doing something like this.
+
+#+begin_src javascript
+forEach(array, function (i) {
+    console.log("This is the value of i:")
+    console.log(i)
+})
+#+end_src
+
+It's ugly and permanent. There's *literally* no way you can create a
+better syntax for it.
+
+We, however, are epic lisp developers. We don't adapt to the language,
+the language adapts to us, am I right? Let's implement foreach.
+
+#+begin_src lisp
+(let foreach
+  (macro
+   (var list expr)
+   (eval
+    `(let ((,var nil)
+           (list ,list))
+       (set ,var (car list)
+            list (cdr list))
+       ,expr))))
+#+end_src
+
+This makes use of some functions we don't know yet.
+
+| Name | Description                             |
+|------+-----------------------------------------|
+| eval | Opposite of quote, turns data into code |
+| car  | Return the head of a list               |
+| cdr  | Return the tail of a list               |
+
+This makes use of previous concepts we looked at like the evaluation
+rules and quasi-quotation. Don't just copy-paste this code, read it
+and try to make sense of it.
+
+Let's see our custom syntax in action.
+
+#+begin_src lisp
+(foreach
+ i '(1 2 3 4)
+ (print i))
+#+end_src
+
+#+begin_src console
+$ lust foreach.lisp
+1
+2
+3
+4
+#+end_src
+
+Dab.
+
+* Variadics
+To introduce variadics, you prepend the last parameter of a lambda
+with the ~:rest~ keyword.
+
+#+begin_src lisp
+(let sum
+  (lambda (first :rest numbers)
+    (let ((result first))
+      (while (not (nil? numbers))
+        (set result (+ result (car numbers)))
+        (set numbers (cdr numbers))))))
+
+(print (sum 1 2 3 4)) ; => 10
+#+end_src
+
+Here the number ~1~ is assigned to the symbol ~first~, while the list
+~(2 3 4)~ is assigned to the variadic parameter ~numbers~.
+
+* Variadic macros
+Let's improve our foreach macro from earlier. While an impressive
+piece of code on its own, it is incapable of handling blocks of code
+as smoothly as the special form dolist can.
+
+#+begin_src lisp
+(foreach
+ i '(1 2 3 4)
+ (print "This is the value of i:")
+ (print i))
+#+end_src
+
+This is currently not possible. Now that we know about variadics,
+let's fix that.
+
+#+begin_src lisp
+(let foreach
+  (macro
+   (var list :rest body)     ; Make the body variadic
+   (eval
+    `(let ((,var nil)
+           (list ,list))
+       (set ,var (car list)
+            list (cdr list))
+       ,body))))
+#+end_src
+
+Before explainations, let's run it.
+
+#+begin_src console
+$ lust foreach.lisp
+error: invalid function 'nil'
+In foreach()
+#+end_src
+
+Debug time!
+
+The ~:rest~ keyword made the ~body~ parameter variadic. However that
+also introduced a problem. Remember how I mentioned that the variadic
+parameter is assigned to a list of all the variadic arguments?
+Basically the parameter ~body~ in this macro gets assigned to this.
+
+#+begin_src lisp
+((print "This is the value of i:")
+ (print i))
+#+end_src
+
+Believe it or not, this is different from what we want, because due to
+the evaluation rules, it will evaluate ~(print "This is the value of
+i:")~ which returns ~nil~. Then it will evaluate ~(print i)~ which
+also returns ~nil~. The final function call will be ~(nil nil)~, which
+is an error. You cannot invoke ~nil~ as a function.
+
+#+begin_src lisp
+> `(1 2 3 ,((+ 2 3 4) (+ 2 3 4)))
+> `(1 2 3 (9 9))                  ; Evaluates the list before unwraping it
+error: invalid function '9'
+#+end_src
+
+In Javascript lingo, "undefined is not a function".
+
+This is where the ~,@body~ thingy comes into play. Instead of the
+standard ~unquote~ behaviour, it unquotes expressions variadically.
+
+#+begin_src lisp
+> `(1 2 3 ,@((+ 2 3 4) (+ 2 3 4)))
+> `(1 2 3 ,(+ 2 3 4) ,(+ 2 3 4))  ; Unwraps the list before evaluation
+> `(1 2 3 9 9)                    ; => (1 2 3 9 9)
+#+end_src
+
+Note that ~,@EXPR~ is shorthand for ~(unquote-variadic EXPR)~
+
+Now the parameter ~body~ in this macro gets assigned to this.
+
+#+begin_src lisp
+(print "This is the value of i:")
+(print i)
+#+end_src
+
+Which is exactly what we want.
+
+So the *final* definition of the foreach macro:
+
+#+begin_src lisp
+(let foreach
+  (macro
+   (var list :rest body)     ; Make the body variadic
+   (eval
+    `(let ((,var nil)
+           (list ,list))
+       (set ,var (car list)
+            list (cdr list))
+       ,@body))))            ; ,body -> ,@body
+#+end_src
+
+Let's run it.
+
+#+begin_src console
+$ lust foreach.lisp
+This is the value of i:
+1
+This is the value of i:
+2
+This is the value of i:
+3
+This is the value of i:
+4
+#+end_src
+
+Awesome.

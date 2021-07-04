@@ -234,7 +234,7 @@ pub fn load(ast: &mut Ast) {
     ast.define("or", Native(bool_condition!(true, |a, b| a || b)));
     ast.define("not", Native(bool_unary!("not", |v| !ast::is_true(&v))));
 
-    // Foldable
+    // Equality
     ast.define("=", Native(equality!(|a, b| a == b)));
     ast.define("!=", Native(equality!(|a, b| a != b)));
 
@@ -255,7 +255,7 @@ pub fn load(ast: &mut Ast) {
     ast.define("-", Native(arith_operation!(0.0, |a, b| a - b)));
     ast.define("*", Native(arith_operation!(1.0, |a, b| a * b)));
     ast.define("/", Native(arith_operation!(1.0, |a, b| a / b)));
-    ast.define("%", Native(arith_operation!(1.0, |a, b| a % b)));
+    ast.define("%", Native(arith_operation!(0.0, |a, b| a % b)));
 
     // QoL functions
     ast.define("length", Native(length));

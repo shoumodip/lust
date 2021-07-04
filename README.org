@@ -1,10 +1,28 @@
 * About
 Very simple Lisp interpreter in Rust.
 
-* Quick start
+* Installation
 #+begin_src console
 $ git clone https://github.com/shoumodip/lust
 $ cd lust
 $ cargo install --path .
-$ lust examples/scopes.scm
 #+end_src
+
+* Usage
+** Repl
+Launch a REPL, use =CTRL-d= or =CTRL-C= to exit.
+
+#+begin_src console
+$ lust
+#+end_src
+
+** Run files
+Run files sequentially, exits in case of error.
+
+#+begin_src console
+$ lust file1 [file2] [file3]
+#+end_src
+
+* Documentation
+- [[https://github.com/shoumodip/blob/main/docs/tutorial.org][Tutorial]]
+- [[https://github.com/shoumodip/blob/main/docs/stdlib.org][Standard Library]]
