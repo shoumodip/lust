@@ -786,7 +786,7 @@ error: invalid function '9'
 
 In Javascript lingo, "undefined is not a function".
 
-This is where =,@= comes into play. Instead of the
+This is where ',@' comes into play. Instead of the
 standard ~unquote~ behaviour, it unquotes expressions variadically.
 
 #+begin_src lisp
@@ -795,7 +795,7 @@ standard ~unquote~ behaviour, it unquotes expressions variadically.
 > `(1 2 3 9 9)                    ; => (1 2 3 9 9)
 #+end_src
 
-Note that =,@= is shorthand for ~unquote-variadic~
+Note that ',@' is shorthand for ~unquote-variadic~
 
 Now the parameter ~body~ in this macro gets assigned to this.
 
@@ -834,4 +834,4 @@ This is the value of i:
 4
 #+end_src
 
-Awesome.
+You. Are. Ready.
