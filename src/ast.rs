@@ -2,18 +2,20 @@ use std::fmt;
 use std::result;
 use std::collections::HashMap;
 
+use crate::parser;
+
 pub type Env = HashMap<String, Value>;
 pub type Function = fn(Vec<Value>) -> Result;
 pub type Result = result::Result<Value, String>;
 
-#[derive(Clone)]
+#[derive(PartialEq, Clone)]
 pub enum Value {
     Boolean(bool),
     Number(f64),
     Symbol(String),
     String(String),
     Native(Function),
-    Lambda(Vec<String>, Vec<Value>),
+    Lambda(bool, bool, Vec<String>, Vec<Value>),
     List(Vec<Value>),
     Nil,
 }
@@ -28,6 +30,56 @@ pub fn is_true(value: &Value) -> bool {
     }
 }
 
+pub fn is_nil(value: &Value) -> bool {
+    use Value::*;
+    match value {
+        Nil => true,
+        List(l) if l.len() == 0 => true,
+        _ => false
+    }
+}
+
+pub fn eval_lambda_form(arguments: &[Value], is_macro: bool) -> Result {
+    use Value::*;
+
+    if arguments.len() == 0 {
+        Ok(Lambda(is_macro, false, vec![], vec![]))
+    } else {
+        match &arguments[0] {
+            List(lambda_parameters) => {
+                let mut parameters = vec![];
+                let mut variadic = false;
+                let mut variadic_unnamed = true;
+
+                for parameter in lambda_parameters {
+                    match parameter {
+                        Symbol(s) => match &s[..] {
+                            ":rest" => variadic = true,
+                            _ => {
+                                parameters.push(s.clone());
+                                if variadic {
+                                    variadic_unnamed = false;
+                                    break;
+                                }
+                            }
+                        }
+
+                        invalid => return Err(format!("invalid parameter '{}'", invalid))
+                    }
+                }
+
+                if variadic && variadic_unnamed {
+                    Err("name of variadic argument is not given".to_string())
+                } else {
+                    Ok(Lambda(is_macro, variadic, parameters, arguments[1..].to_vec()))
+                }
+
+            },
+            invalid => return Err(format!("invalid parameter list '{}'", invalid))
+        }
+    }
+}
+
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use Value::*;
@@ -36,8 +88,9 @@ impl fmt::Display for Value {
             Number(n) => write!(f, "{}", n),
             Symbol(s) => write!(f, "{}", s),
             String(s) => write!(f, "{}", s),
-            Native(_) => write!(f, "#<function>"),
-            Lambda(_, _) => write!(f, "#<function>"),
+            Native(_) => write!(f, "#<native>"),
+            Lambda(false, _, _, _) => write!(f, "#<lambda>"),
+            Lambda(true, _, _, _) => write!(f, "#<macro>"),
             List(list) => {
                 write!(f, "(")?;
                 for (index, value) in list.iter().enumerate() {
@@ -128,11 +181,11 @@ impl Ast {
         }
     }
 
-    pub fn define(&mut self, symbol: String, value: Value) {
+    pub fn define(&mut self, symbol: &str, value: Value) {
         self.scopes
             .first_mut()
             .expect("100% rust bug not mine")
-            .define(symbol, value);
+            .define(symbol.to_string(), value);
     }
 
     pub fn last_scope(&mut self) -> &mut Scope {
@@ -148,21 +201,23 @@ impl Ast {
         self.scopes.pop();
     }
 
-    pub fn lookup(&self, symbol: String) -> Result {
+    pub fn lookup(&self, symbol: &str) -> Result {
+        let symbol = &symbol.to_string();
+
         if self.calls.len() == 0 {
             for scope in self.scopes.iter().rev() {
-                if let Some(value) = scope.lookup(&symbol) {
+                if let Some(value) = scope.lookup(symbol) {
                     return Ok(value.clone());
                 }
             }
         } else {
             let last = self.scopes.len() - 1;
 
-            if let Some(value) = self.scopes[last].lookup(&symbol) {
+            if let Some(value) = self.scopes[last].lookup(symbol) {
                 return Ok(value.clone());
             }
 
-            if let Some(value) = self.scopes[0].first().get(&symbol) {
+            if let Some(value) = self.scopes[0].first().get(symbol) {
                 return Ok(value.clone());
             }
         }
@@ -219,74 +274,143 @@ impl Ast {
                        name: String,
                        parameters: Vec<String>,
                        arguments: &[Value],
+                       variadic: bool,
+                       is_macro: bool,
                        body: Vec<Value>) -> Result
     {
-        if parameters.len() != arguments.len() {
-            Err(format!("function '{}' takes {} parameter(s), found {} instead",
-                        name,
-                        parameters.len(),
-                        arguments.len()))
-        } else {
-            let mut env = Env::new();
+        let parameters_length = parameters.len();
+        let arguments_length = arguments.len();
 
-            for (index, argument) in arguments.iter().enumerate() {
-                match self.eval(argument.clone()) {
+        if variadic {
+            if arguments_length < parameters_length {
+                return Err(format!("variadic {} '{}' takes at least {} parameter(s), found {} instead",
+                                   if is_macro {"macro"} else {"function"},
+                                   name,
+                                   parameters_length,
+                                   arguments_length));
+            }
+        } else {
+            if arguments_length != parameters_length {
+                return Err(format!("{} '{}' takes {} parameter(s), found {} instead",
+                                   if is_macro {"macro"} else {"function"},
+                                   name,
+                                   parameters_length,
+                                   arguments_length));
+            }
+        }
+
+        if arguments_length != parameters_length + 1 {
+            if !variadic || arguments_length < parameters.len() {
+            }
+        }
+
+        let mut env = Env::new();
+
+        for i in 0..parameters_length {
+            if is_macro {
+                env.insert(parameters[i].clone(), arguments[i].clone());
+            } else {
+                match self.eval(arguments[i].clone()) {
                     Ok(value) => {
-                        env.insert(parameters[index].clone(), value);
+                        env.insert(parameters[i].clone(), value);
+                    },
+                    error => return error
+                }
+            }
+        }
+
+        if variadic && arguments_length > parameters_length - 1 {
+            let mut variadic = vec![];
+
+            for i in parameters_length - 1..arguments_length {
+                if is_macro {
+                    variadic.push(arguments[i].clone());
+                } else {
+                    match self.eval(arguments[i].clone()) {
+                        Ok(value) => variadic.push(value),
+                        error => return error
                     }
-                    error => return error,
                 }
             }
 
-            self.push_scope(Scope::from(env));
-            self.calls.push(name);
-
-            let result = self.eval_do(&body);
-
-            if let Ok(_) = result {
-                self.calls.pop();
-            }
-
-            self.pop_scope();
-            result
+            env.insert(parameters[parameters_length - 1].clone(), Value::List(variadic));
         }
+
+        self.push_scope(Scope::from(env));
+        self.calls.push(name);
+
+        let result = self.eval_do(&body);
+
+        if let Ok(_) = result {
+            self.calls.pop();
+        }
+
+        self.pop_scope();
+        result
     }
 
     pub fn eval_set(&mut self, arguments: &[Value]) -> Result {
         use Value::*;
-        if arguments.len() < 2 {
-            Err(format!("expected variable name and value, instead received {} argument(s)",
-                        arguments.len()))
+
+        if arguments.len() < 1 {
+            Err("improper form of global binding".to_string())
         } else {
-            match arguments[0].clone() {
-                Symbol(variable) => match self.eval(arguments[1].clone()) {
-                    Ok(value) => self.scope_set(variable, value),
-                    error => error
-                },
-                invalid => Err(format!("invalid variable '{}'", invalid))
+            let mut i = 0;
+
+            while i < arguments.len() {
+                match arguments[i].clone() {
+                    Symbol(symbol) => if arguments.len() - 1 > i {
+                        i += 1;
+
+                        match self.eval(arguments[i].clone()) {
+                            Ok(value) => match self.scope_set(symbol, value) {
+                                Ok(_) => {},
+                                error => return error
+                            },
+                            error => return error
+                        }
+                    } else {
+                        match self.scope_set(symbol.clone(), Nil) {
+                            Ok(_) => {},
+                            error => return error
+                        }
+                    }
+                    invalid => return Err(format!("invalid binding '{}'", invalid))
+                }
+
+                i += 1;
             }
+
+            Ok(Nil)
         }
     }
 
     pub fn eval_define(&mut self, arguments: &[Value]) -> Result {
         use Value::*;
 
-        let mut value = Nil;
-        match arguments.len() {
-            1 => {},
-            2 => value = arguments[1].clone(),
-            _ => return Err("improper form of define".to_string())
-        }
+        if arguments.len() < 1 {
+            Err("improper form of global binding".to_string())
+        } else {
+            let mut i = 0;
+            while i < arguments.len() {
+                match &arguments[i] {
+                    Symbol(symbol) => if arguments.len() - 1 > i {
+                        i += 1;
 
-        match arguments[0].clone() {
-            Symbol(variable) => match self.eval(value) {
-                Ok(value) => {
-                    self.define(variable, value);
-                    Ok(Nil)
-                },
-                error => error,
-            },
-            invalid => Err(format!("invalid variable '{}'", invalid))
+                        match self.eval(arguments[i].clone()) {
+                            Ok(value) => self.define(&symbol, value),
+                            error => return error
+                        }
+                    } else {
+                        self.define(&symbol, Nil);
+                    }
+                    invalid => return Err(format!("invalid binding '{}'", invalid))
+                }
+
+                i += 1;
+            }
+
+            Ok(Nil)
         }
     }
 
@@ -310,7 +434,12 @@ impl Ast {
         if arguments.len() == 0 {
             Ok(Nil)
         } else {
-            let branch = if is_true(&arguments[0]) {1} else {2};
+            let branch;
+
+            match self.eval(arguments[0].clone()) {
+                Ok(value) => branch = if is_true(&value) {1} else {2},
+                error => return error
+            }
 
             if arguments.len() <= branch {
                 Ok(Nil)
@@ -320,23 +449,59 @@ impl Ast {
         }
     }
 
+    pub fn eval_do_condition(&mut self, arguments: &[Value], condition: bool) -> Result {
+        use Value::*;
+
+        if arguments.len() == 0 {
+            Ok(Nil)
+        } else {
+            match self.eval(arguments[0].clone()) {
+                Ok(value) => if is_true(&value) == condition {
+                    self.eval_do(&arguments[1..])
+                } else {
+                    Ok(Nil)
+                },
+                error => error
+            }
+        }
+    }
+
     pub fn eval_while(&mut self, arguments: &[Value]) -> Result {
         use Value::*;
 
-        if arguments.len() > 0 {
+        if arguments.len() < 1 {
+            Ok(Nil)
+        } else {
+            let mut result = Nil;
+
             loop {
                 match self.eval(arguments[0].clone()) {
                     Ok(value) if !is_true(&value) => break,
                     Ok(_) => match self.eval_do(&arguments[1..]) {
-                        Ok(_) => {},
+                        Ok(value) => result = value,
                         error => return error
                     },
                     error => return error
                 }
             }
-        }
 
-        Ok(Nil)
+            Ok(result)
+        }
+    }
+
+    pub fn eval_eval(&mut self, arguments: &[Value]) -> Result {
+        use Value::*;
+
+        match arguments[0].clone() {
+            String(s) => match self.run(parser::tokenize(s)) {
+                Some(value) => Ok(value),
+                None => Ok(Nil)
+            },
+            _ => match self.eval(arguments[0].clone()) {
+                Ok(value) => self.eval(value),
+                error => error
+            }
+        }
     }
 
     pub fn eval_let(&mut self, arguments: &[Value]) -> Result {
@@ -352,13 +517,17 @@ impl Ast {
                     for binding in scope.iter() {
                         match binding {
                             List(binding) => match &binding[0] {
-                                Symbol(symbol) => match self.eval(binding[1].clone()) {
-                                    Ok(value) => { env.insert(symbol.to_string(), value); }
-                                    error => return error,
+                                Symbol(symbol) => if binding.len() == 2 {
+                                    match self.eval(binding[1].clone()) {
+                                        Ok(value) => { env.insert(symbol.to_string(), value); }
+                                        error => return error,
+                                    }
+                                } else {
+                                    env.insert(symbol.to_string(), Nil);
                                 },
                                 invalid => return Err(format!("invalid variable '{}'", invalid))
                             },
-                            invalid => return Err(format!("invalid binding in scope '{}'", invalid))
+                            invalid => return Err(format!("invalid binding '{}'", invalid))
                         }
                     }
 
@@ -372,43 +541,71 @@ impl Ast {
         }
     }
 
+    pub fn eval_quasiquote(&mut self, value: Value) -> Result {
+        use Value::*;
+
+        match value {
+            List(list) => {
+                let mut result = vec![];
+
+                for value in list {
+                    if let List(list) = value.clone() {
+                        match list[0].clone() {
+                            Symbol(s) if s == "unquote" => match self.eval(list[1].clone()) {
+                                Ok(value) => result.push(value),
+                                error => return error
+                            },
+
+                            Symbol(s) if s == "unquote-variadic" => match self.eval(list[1].clone()) {
+                                Ok(List(value)) => result.extend(value),
+                                Ok(value) => result.push(value),
+                                error => return error
+                            },
+
+                            _ => match self.eval_quasiquote(List(list)) {
+                                Ok(value) => result.push(value),
+                                error => return error
+                            }
+                        }
+                    } else {
+                        result.push(value);
+                    }
+                }
+
+                Ok(List(result))
+            },
+            atom => Ok(atom)
+        }
+    }
+
+
     pub fn eval_call(&mut self, name: String, arguments: &[Value]) -> Result {
         use Value::*;
 
         match &name[..] {
             "define" => self.eval_define(arguments),
             "quote" => Ok(arguments[0].clone()),
+            "quasiquote" => self.eval_quasiquote(arguments[0].clone()),
             "let" => self.eval_let(arguments),
             "set" => self.eval_set(arguments),
             "do" => self.eval_do(arguments),
             "if" => self.eval_if(arguments),
+            "when" => self.eval_do_condition(arguments, true),
+            "unless" => self.eval_do_condition(arguments, false),
             "while" => self.eval_while(arguments),
-            "lambda" => {
-                if arguments.len() == 0 {
-                    Ok(Lambda(vec![], vec![]))
-                } else {
-                    match &arguments[0] {
-                        List(lambda_parameters) => {
-                            let mut parameters = vec![];
+            "lambda" => eval_lambda_form(arguments, false),
+            "macro" => eval_lambda_form(arguments, true),
+            "eval" => self.eval_eval(arguments),
 
-                            for parameter in lambda_parameters {
-                                match parameter {
-                                    Symbol(s) => parameters.push(s.clone()),
-                                    invalid => return Err(format!("invalid parameter '{}'", invalid))
-                                }
-                            }
-
-                            Ok(Lambda(parameters, arguments[1..].to_vec()))
-                        },
-                        invalid => return Err(format!("invalid parameter list '{}'", invalid))
-                    }
-                }
-            }
-
-            function => match self.lookup(function.to_string()) {
+            function => match self.lookup(function) {
                 Ok(value) => match value {
                     Native(f) => self.eval_native(name, f, arguments),
-                    Lambda(parameters, body) => self.eval_lambda(name, parameters, arguments, body),
+                    Lambda(is_macro, variadic, parameters, body) => self.eval_lambda(name,
+                                                                                     parameters,
+                                                                                     arguments,
+                                                                                     variadic,
+                                                                                     is_macro,
+                                                                                     body),
                     invalid => Err(format!("invalid function '{}'", invalid))
                 },
                 error => error
@@ -423,11 +620,21 @@ impl Ast {
 
             _ => match list[0].clone() {
                 Symbol(s) => self.eval_call(s, &list[1..]),
-                Lambda(parameters, body) => self.eval_lambda("#<lambda>".to_string(),
-                                                             parameters,
-                                                             &list[1..],
-                                                             body),
+                Lambda(is_macro, variadic, parameters, body) => self.eval_lambda("#<lambda>".to_string(),
+                                                                                 parameters,
+                                                                                 &list[1..],
+                                                                                 variadic,
+                                                                                 is_macro,
+                                                                                 body),
 
+                List(l) => match self.eval_list(l) {
+                    Ok(function) => {
+                        let mut expression = vec![function];
+                        expression.extend(list[1..].to_vec());
+                        self.eval_list(expression)
+                    }
+                    error => error
+                },
                 invalid => Err(format!("invalid function '{}'", invalid))
             }
         }
@@ -436,7 +643,7 @@ impl Ast {
     pub fn eval(&mut self, expression: Value) -> Result {
         use Value::*;
         match expression {
-            Symbol(s) => self.lookup(s),
+            Symbol(s) => self.lookup(&s),
             List(list) => self.eval_list(list),
             _ => Ok(expression)
         }

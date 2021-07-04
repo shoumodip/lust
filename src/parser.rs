@@ -30,6 +30,15 @@ impl Parser {
         }
     }
 
+    pub fn consume(&mut self, character: char) -> bool {
+        if !self.is_at_end() && self.source[self.position + 1] == character {
+            self.advance();
+            true
+        } else {
+            false
+        }
+    }
+
     pub fn advance(&mut self) {
         if !self.is_at_end() {
             if self.get_char() == Some('\n') {
@@ -153,8 +162,17 @@ impl Parser {
         }
     }
 
-    pub fn read_token(&mut self) -> Result {
+    pub fn read_quote(&mut self, kind: &str) -> Result {
         use Value::*;
+
+        self.advance();
+        match self.read_token() {
+            Ok(token) => Ok(List(vec![Symbol(kind.to_string()), token])),
+            error => error
+        }
+    }
+
+    pub fn read_token(&mut self) -> Result {
         self.skip_whitespace();
 
         if let Some(character) = self.get_char() {
@@ -163,18 +181,18 @@ impl Parser {
                 ')' => Err("unbalanced parenthesis".to_string()),
                 '"' => self.read_string(),
 
-                '\'' => {
-                    self.advance();
-                    match self.read_token() {
-                        Ok(token) => Ok(List(vec![Symbol("quote".to_string()), token])),
-                        error => error
-                    }
+                '\'' => self.read_quote("quote"),
+                '`' => self.read_quote("quasiquote"),
+                ',' => if self.consume('@') {
+                    self.read_quote("unquote-variadic")
+                } else {
+                    self.read_quote("unquote")
                 },
 
                 _ => self.read_atom(),
             }
         } else {
-            Ok(Nil)
+            Ok(Value::Nil)
         }
     }
 }
