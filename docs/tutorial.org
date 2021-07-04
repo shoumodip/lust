@@ -55,8 +55,8 @@ false ; => false
 A symbol is like variables in "conventional" languages. The thing
 which separates it from other languages is that a symbol in Lust can
 consist of /any/ character except parenthesis and spaces. Additionally
-a symbol cannot start with a single quote (~'~), double quote (="=), backtick, or
-a comma (~,~).
+a symbol cannot start with a single quote, double quote, backtick, or
+a comma.
 
 #+begin_src lisp
 variable
@@ -102,7 +102,7 @@ Numbers evaluate to themselves.
 65.0 ; => 65.0
 #+end_src
 
-Notice the conversion from interger to float. All numbers are floating
+Notice the conversion from integer to float. All numbers are floating
 point decimals under the hood in Lust.
 
 ** Strings
@@ -194,8 +194,12 @@ To quote an expression, you prepend it with a single quote. This is
 precisely the reason why a symbol cannot start with a single quote.
 
 ** Wrong concept
-Let's try to imagine this in the Javascript POV from our previous
-knowledge about lists.
+#+begin_src lisp
+'(2 3 4)
+#+end_src
+
+Consider the above expression. Let's try to imagine this in the
+Javascript POV from our previous knowledge about lists.
 
 #+begin_src javascript
 quote(2(3, 4))
@@ -302,14 +306,14 @@ operation. The above example for example could be written as follows.
 `(1 2 3 ,(* 2 2))
 #+end_src
 
-The backtick (~`~) starts quasi-quotation, while the comma (~,~)
+The backtick (~`~) starts quasi-quotation, while the comma
 performs unquotation.
 
 #+begin_quote
 Can (unquote) work inside the single-quote quotation?
 #+end_quote
 
-Let's find out shall we?
+Let's find out, shall we?
 
 #+begin_src lisp
 '(1 2 3 ,(* 2 2)) ; => (1 2 3 (unquote (* 2 2)))
@@ -403,7 +407,7 @@ Can your "code and data is same" lisp do this?
 #+begin_src javascript
 if user.madeFunOfLisp() {
     console.log("Congratulations!")
-    console.log("You did the right decision")
+    console.log("You did the right thing!")
     console.log("Use JS! Everything else sucks!")
 } else {
     console.log("LISP: Lots of Irritation Superfluous Parenthesis")
@@ -636,7 +640,8 @@ special forms.
 This is how you define a macro.
 
 * Macro example
-In case you don't remember from earlier, here is an example of it.
+In case you don't remember from earlier, here is an example of the
+~dolist~ special form.
 
 #+begin_src lisp
 (dolist (i '(1 2 3 4 5))
@@ -781,7 +786,7 @@ error: invalid function '9'
 
 In Javascript lingo, "undefined is not a function".
 
-This is where the ~,@body~ thingy comes into play. Instead of the
+This is where =,@= comes into play. Instead of the
 standard ~unquote~ behaviour, it unquotes expressions variadically.
 
 #+begin_src lisp
@@ -790,7 +795,7 @@ standard ~unquote~ behaviour, it unquotes expressions variadically.
 > `(1 2 3 9 9)                    ; => (1 2 3 9 9)
 #+end_src
 
-Note that ~,@EXPR~ is shorthand for ~(unquote-variadic EXPR)~
+Note that =,@= is shorthand for ~unquote-variadic~
 
 Now the parameter ~body~ in this macro gets assigned to this.
 
