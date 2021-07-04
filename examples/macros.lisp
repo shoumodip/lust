@@ -1,7 +1,7 @@
 (let dolist
   (macro
    (decl :rest body)
-   (eval 
+   (eval
     `(let ((list ,@(cdr decl))
            (,(car decl) nil))
        (while (not (nil? list))

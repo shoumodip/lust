@@ -64,18 +64,23 @@ pub fn eval_lambda_form(arguments: &[Value], is_macro: bool) -> Result {
                             }
                         }
 
-                        invalid => return Err(format!("invalid parameter '{}'", invalid))
+                        invalid => return Err(format!("invalid parameter '{}' in {}",
+                                                      invalid,
+                                                      if is_macro {"macro"} else {"lambda"}))
                     }
                 }
 
                 if variadic && variadic_unnamed {
-                    Err("name of variadic argument is not given".to_string())
+                    Err(format!("name of variadic argument is not given in {}",
+                                if is_macro {"macro"} else {"lambda"}))
                 } else {
                     Ok(Lambda(is_macro, variadic, parameters, arguments[1..].to_vec()))
                 }
 
             },
-            invalid => return Err(format!("invalid parameter list '{}'", invalid))
+            invalid => return Err(format!("invalid parameter list '{}' in {}",
+                                          invalid,
+                                          if is_macro {"macro"} else {"lambda"}))
         }
     }
 }
@@ -246,7 +251,7 @@ impl Ast {
             }
         }
 
-        Err(format!("undefined symbol '{}'", symbol))
+        Err(format!("undefined symbol '{}' in set", symbol))
     }
 
     pub fn eval_native(&mut self,
@@ -353,7 +358,7 @@ impl Ast {
         use Value::*;
 
         if arguments.len() < 1 {
-            Err("improper form of global binding".to_string())
+            Err("improper form of set".to_string())
         } else {
             let mut i = 0;
 
@@ -375,7 +380,7 @@ impl Ast {
                             error => return error
                         }
                     }
-                    invalid => return Err(format!("invalid binding '{}'", invalid))
+                    invalid => return Err(format!("invalid binding '{}' in set", invalid))
                 }
 
                 i += 1;
@@ -404,7 +409,7 @@ impl Ast {
                     } else {
                         self.define(&symbol, Nil);
                     }
-                    invalid => return Err(format!("invalid binding '{}'", invalid))
+                    invalid => return Err(format!("invalid global binding '{}'", invalid))
                 }
 
                 i += 1;
@@ -489,6 +494,52 @@ impl Ast {
         }
     }
 
+    pub fn eval_dolist(&mut self, arguments: &[Value]) -> Result {
+        use Value::*;
+
+        if arguments.len() < 1 {
+            Ok(Nil)
+        } else {
+            match arguments[0].clone() {
+                List(declaration) => if declaration.len() == 2 {
+                    match &declaration[0] {
+                        Symbol(symbol) => match self.eval(declaration[1].clone()) {
+                            Ok(List(list)) => {
+                                if list.len() > 0 {
+                                    let mut env = Env::new();
+                                    env.insert(symbol.clone(), Nil);
+                                    self.last_scope().push(env);
+
+                                    for value in list {
+                                        match self.scope_set(symbol.clone(), value) {
+                                            Ok(_) => {},
+                                            error => return error
+                                        }
+
+                                        match self.eval_do(&arguments[1..]) {
+                                            Ok(_) => {},
+                                            error => return error
+                                        }
+                                    }
+
+                                    self.last_scope().pop();
+                                }
+
+                                Ok(Nil)
+                            },
+                            Ok(invalid) => Err(format!("invalid list '{}' in dolist", invalid)),
+                            error => error
+                        }
+                        invalid => Err(format!("invalid iterator '{}' in dolist", invalid))
+                    }
+                } else {
+                    Ok(Nil)
+                },
+                invalid => Err(format!("invalid binding '{}' in dolist", invalid))
+            }
+        }
+    }
+
     pub fn eval_eval(&mut self, arguments: &[Value]) -> Result {
         use Value::*;
 
@@ -525,9 +576,9 @@ impl Ast {
                                 } else {
                                     env.insert(symbol.to_string(), Nil);
                                 },
-                                invalid => return Err(format!("invalid variable '{}'", invalid))
+                                invalid => return Err(format!("invalid variable '{}' in let", invalid))
                             },
-                            invalid => return Err(format!("invalid binding '{}'", invalid))
+                            invalid => return Err(format!("invalid binding '{}' in let", invalid))
                         }
                     }
 
@@ -536,7 +587,7 @@ impl Ast {
                     self.last_scope().pop();
                     result
                 },
-                _ => Err("invalid form of scope".to_string())
+                _ => Err("invalid form of let".to_string())
             }
         }
     }
@@ -592,6 +643,7 @@ impl Ast {
             "if" => self.eval_if(arguments),
             "when" => self.eval_do_condition(arguments, true),
             "unless" => self.eval_do_condition(arguments, false),
+            "dolist" => self.eval_dolist(arguments),
             "while" => self.eval_while(arguments),
             "lambda" => eval_lambda_form(arguments, false),
             "macro" => eval_lambda_form(arguments, true),
