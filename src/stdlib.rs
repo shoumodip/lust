@@ -279,46 +279,30 @@ pub fn load(ast: &mut Ast) {
     ast.define("concat", Native(concat));
     ast.define("range", Native(range));
 
-    ast.define("even", Lambda(false, false, vec![
-        "number".to_string(),
-    ], vec![
-        List(vec![
-            Symbol("=".to_string()),
-            List(vec![
-                Symbol("%".to_string()),
-                Symbol("number".to_string()),
-                Number(2.0)
-            ]),
-            Number(0.0)
-        ])
-    ]));
+    define_lambda(ast, "even", "
+(lambda (number)
+  (= (% number 2) 0))");
 
-    ast.define("odd", Lambda(false, false, vec![
-        "number".to_string(),
-    ], vec![
-        List(vec![
-            Symbol("not".to_string()),
-            List(vec![
-                Symbol("even".to_string()),
-                Symbol("number".to_string()),
-            ]),
-        ])
-    ]));
+    define_lambda(ast, "odd", "
+(lambda (number)
+  (= (% number 2) 1))");
 
-    define_lambda(ast, "map", "(lambda (function list)
-      (let ((result '()))
-        (while (not (nil? list))
-          (set result (cons result (function (car list)))
-               list (cdr list)))
-        result))");
+    define_lambda(ast, "map", "
+(lambda (function list)
+  (let ((result '()))
+    (while (not (nil? list))
+      (set result (cons result (function (car list)))
+           list (cdr list)))
+    result))");
 
-    define_lambda(ast, "filter", "(lambda (predicate list)
-      (let ((result '())
-            (head nil))
-        (while (not (nil? list))
-          (set head (car list)
-               list (cdr list))
-          (when (predicate head)
-            (set result (cons result head))))
-        result))");
+    define_lambda(ast, "filter", "
+(lambda (predicate list)
+  (let ((result '())
+        (head nil))
+    (while (not (nil? list))
+      (set head (car list)
+           list (cdr list))
+      (when (predicate head)
+        (set result (cons result head))))
+    result))");
 }
