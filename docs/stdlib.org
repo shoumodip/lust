@@ -1,4 +1,4 @@
-* Ad-hoc promitives
+* Ad-hoc primitives
 ** ~(car LIST)~
 Return the head of ~LIST~.
 
@@ -243,6 +243,61 @@ Performs modulo on the values sequentially.
 #+begin_src lisp
 (% 5 4 3 2) ; => 1
 (%)         ; => 0
+#+end_src
+
+** ~(+= NUMBER VALUE)~
+Adds ~VALUE~ to ~NUMBER~.
+
+#+begin_src lisp
+(let number 5)
+(print number) ; => 5
+
+(+= number 5)
+(print number) ; => 10
+#+end_src
+
+** ~(-= NUMBER VALUE)~
+Subtract ~VALUE~ from ~NUMBER~.
+
+#+begin_src lisp
+(let number 10)
+(print number) ; => 10
+
+(-= number 5)
+(print number) ; => 5
+#+end_src
+
+** ~(*= NUMBER VALUE)~
+Multiply ~VALUE~ with ~NUMBER~.
+
+#+begin_src lisp
+(let number 5)
+(print number) ; => 5
+
+(*= number 5)
+(print number) ; => 25
+#+end_src
+
+** ~(/= NUMBER VALUE)~
+Divide ~VALUE~ by ~NUMBER~.
+
+#+begin_src lisp
+(let number 30)
+(print number) ; => 30
+
+(/= number 5)
+(print number) ; => 6
+#+end_src
+
+** ~(%= NUMBER VALUE)~
+Performs modulo on ~VALUE~ by ~NUMBER~.
+
+#+begin_src lisp
+(let number 7)
+(print number) ; => 7
+
+(%= number 4)
+(print number) ; => 3
 #+end_src
 
 * QoL functions
