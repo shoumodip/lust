@@ -1,4 +1,5 @@
 use crate::ast::{self, Ast, Result, Value};
+use crate::parser;
 
 macro_rules! equality {
     ($predicate: expr) => {{
@@ -83,30 +84,46 @@ macro_rules! arith_condition {
 }
 
 macro_rules! arith_operation {
-    ($initial: expr, $operator: expr) => {{
-        |arguments: Vec<Value>| -> Result {
-            let mut result = 0.0;
-            let mut result_set = false;
+    ($ast: expr, $name: expr, $initial: expr, $operator: expr) => {{
+        $ast.define(&format!("{}", $name), Native(
+            |arguments: Vec<Value>| -> Result {
+                let mut result = 0.0;
+                let mut result_set = false;
 
-            for argument in &arguments {
-                match argument {
-                    Number(n) => if result_set {
-                        result = $operator(result, n);
-                    } else {
-                        result = *n;
-                        result_set = true;
-                    },
-                    invalid => return Err(format!("invalid number '{}'", invalid))
+                for argument in &arguments {
+                    match argument {
+                        Number(n) => if result_set {
+                            result = $operator(result, n);
+                        } else {
+                            result = *n;
+                            result_set = true;
+                        },
+                        invalid => return Err(format!("invalid number '{}'", invalid))
+                    }
                 }
-            }
 
-            if arguments.len() == 1 {
-                result = $operator($initial, result);
-            }
+                if arguments.len() == 1 {
+                    result = $operator($initial, result);
+                }
 
-            Ok(Number(result))
-        }
+                Ok(Number(result))
+            }
+        ));
+
+        let mutate = $ast.run(parser::tokenize(format!(
+        "(macro (symbol value)
+          (eval
+            `(set ,symbol ({} ,symbol ,value))))", $name)));
+
+        $ast.define(&format!("{}=", $name), mutate.expect("100% rust bug not mine"));
     }};
+}
+
+fn define_lambda(ast: &mut Ast, name: &str, body: &str) {
+    let lambda = ast.run(parser::tokenize(body.to_string()))
+        .expect("100% rust bug not mine");
+
+    ast.define(name, lambda);
 }
 
 fn print(arguments: Vec<Value>) -> Result {
@@ -251,11 +268,11 @@ pub fn load(ast: &mut Ast) {
     ast.define(">=", Native(arith_condition!(|a, b| a >= b)));
 
     // Arithmetic operations
-    ast.define("+", Native(arith_operation!(0.0, |a, b| a + b)));
-    ast.define("-", Native(arith_operation!(0.0, |a, b| a - b)));
-    ast.define("*", Native(arith_operation!(1.0, |a, b| a * b)));
-    ast.define("/", Native(arith_operation!(1.0, |a, b| a / b)));
-    ast.define("%", Native(arith_operation!(0.0, |a, b| a % b)));
+    arith_operation!(ast, "+", 0.0, |a, b| a + b);
+    arith_operation!(ast, "-", 0.0, |a, b| a - b);
+    arith_operation!(ast, "*", 1.0, |a, b| a * b);
+    arith_operation!(ast, "/", 1.0, |a, b| a / b);
+    arith_operation!(ast, "%", 0.0, |a, b| a % b);
 
     // QoL functions
     ast.define("length", Native(length));
@@ -288,114 +305,20 @@ pub fn load(ast: &mut Ast) {
         ])
     ]));
 
-    ast.define("map", Lambda(false, false, vec![
-        "function".to_string(),
-        "list".to_string()
-    ], vec![
-        List(vec![
-            Symbol("let".to_string()),
-            List(vec![
-                List(vec![
-                    Symbol("result".to_string()),
-                    List(vec![
-                        Symbol("quote".to_string()),
-                        List(vec![])
-                    ]),
-                ]),
-            ]),
-            List(vec![
-                Symbol("while".to_string()),
-                List(vec![
-                    Symbol("not".to_string()),
-                    List(vec![
-                        Symbol("nil?".to_string()),
-                        Symbol("list".to_string())
-                    ])
-                ]),
-                List(vec![
-                    Symbol("set".to_string()),
-                    Symbol("result".to_string()),
-                    List(vec![
-                        Symbol("cons".to_string()),
-                        Symbol("result".to_string()),
-                        List(vec![
-                            Symbol("function".to_string()),
-                            List(vec![
-                                Symbol("car".to_string()),
-                                Symbol("list".to_string()),
-                            ])
-                        ])
-                    ]),
-                    Symbol("list".to_string()),
-                    List(vec![
-                        Symbol("cdr".to_string()),
-                        Symbol("list".to_string())
-                    ])
-                ])
-            ]),
-            Symbol("result".to_string())
-        ])
-    ]));
+    define_lambda(ast, "map", "(lambda (function list)
+      (let ((result '()))
+        (while (not (nil? list))
+          (set result (cons result (function (car list)))
+               list (cdr list)))
+        result))");
 
-    ast.define("filter", Lambda(false, false, vec![
-        "predicate".to_string(),
-        "list".to_string()
-    ], vec![
-        List(vec![
-            Symbol("let".to_string()),
-            List(vec![
-                List(vec![
-                    Symbol("result".to_string()),
-                    List(vec![
-                        Symbol("quote".to_string()),
-                        List(vec![])
-                    ]),
-                ]),
-                List(vec![
-                    Symbol("i".to_string()),
-                    Nil
-                ])
-            ]),
-            List(vec![
-                Symbol("while".to_string()),
-                List(vec![
-                    Symbol("not".to_string()),
-                    List(vec![
-                        Symbol("nil?".to_string()),
-                        Symbol("list".to_string())
-                    ])
-                ]),
-                List(vec![
-                    Symbol("set".to_string()),
-                    Symbol("i".to_string()),
-                    List(vec![
-                        Symbol("car".to_string()),
-                        Symbol("list".to_string())
-                    ]),
-                    Symbol("list".to_string()),
-                    List(vec![
-                        Symbol("cdr".to_string()),
-                        Symbol("list".to_string())
-                    ])
-                ]),
-                List(vec![
-                    Symbol("if".to_string()),
-                    List(vec![
-                        Symbol("predicate".to_string()),
-                        Symbol("i".to_string())
-                    ]),
-                    List(vec![
-                        Symbol("set".to_string()),
-                        Symbol("result".to_string()),
-                        List(vec![
-                            Symbol("cons".to_string()),
-                            Symbol("result".to_string()),
-                            Symbol("i".to_string()),
-                        ]),
-                    ])
-                ])
-            ]),
-            Symbol("result".to_string())
-        ])
-    ]));
+    define_lambda(ast, "filter", "(lambda (predicate list)
+      (let ((result '())
+            (head nil))
+        (while (not (nil? list))
+          (set head (car list)
+               list (cdr list))
+          (when (predicate head)
+            (set result (cons result head))))
+        result))");
 }
