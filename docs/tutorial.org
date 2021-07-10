@@ -617,7 +617,7 @@ Most probably this is what comes to your mind when I speak of macros.
 
 While you are not really wrong in your assumption, it's horribly
 understating the powers of macros in lisp. It's synonymous to using
-the phrase "sligtly intelligent" to describe Einstein. While not
+the phrase "slightly more intelligent" to describe Einstein. While not
 wrong, it is not correct either.
 
 Macros in lisp are basically code transformers. You pass some code to
