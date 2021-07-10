@@ -41,6 +41,7 @@ fn repl() {
             0 => break,
             1 => continue,
             _ => match ast.run(parser::tokenize(buffer)) {
+                Some(ast::Value::String(string)) => println!("\"{}\"", string),
                 Some(value) => println!("{}", value),
                 None => {}
             },

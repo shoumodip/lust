@@ -2,7 +2,7 @@
   (macro
    (decl :rest body)
    (eval
-    `(let ((list ,@(cdr decl))
+    `(let ((list ,(nth 1 decl))
            (,(car decl) nil))
        (while (not (nil? list))
          (set ,(car decl) (car list))

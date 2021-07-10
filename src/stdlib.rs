@@ -119,13 +119,6 @@ macro_rules! arith_operation {
     }};
 }
 
-fn define_lambda(ast: &mut Ast, name: &str, body: &str) {
-    let lambda = ast.run(parser::tokenize(body.to_string()))
-        .expect("100% rust bug not mine");
-
-    ast.define(name, lambda);
-}
-
 fn print(arguments: Vec<Value>) -> Result {
     for argument in arguments {
         println!("{}", argument);
@@ -133,17 +126,13 @@ fn print(arguments: Vec<Value>) -> Result {
     Ok(Value::Nil)
 }
 
-fn append(arguments: Vec<Value>) -> Result {
-    use Value::*;
-
+fn cons(arguments: Vec<Value>) -> Result {
     let mut result = vec![];
 
+    use Value::*;
     for value in arguments {
         match value {
-            List(l) => match append(l) {
-                Ok(List(l)) => result.extend(l),
-                error => return error
-            }
+            List(l) => result.extend(l),
             value => result.push(value)
         }
     }
@@ -175,24 +164,72 @@ fn cdr(arguments: Vec<Value>) -> Result {
 
 fn nth(arguments: Vec<Value>) -> Result {
     use Value::*;
-    match &arguments[0] {
-        Number(i) => match &arguments[1] {
-                List(l) => if l.len() > 1 {
-                    Ok(l[*i as usize].clone())
-                } else {
-                    Ok(Nil)
-                },
-                Nil => Ok(Nil),
-                invalid => Err(format!("invalid list '{}'", invalid))
+
+    if arguments.len() == 2 {
+        match &arguments[1] {
+            List(l) => match &arguments[0] {
+                Number(i) if *i >= 0.0 && *i as usize <= l.len() => Ok(l[*i as usize].clone()),
+                invalid => Err(format!("invalid index '{}'", invalid))
+            },
+
+            String(s) => match &arguments[0] {
+                Number(i) if *i >= 0.0 && *i as usize <= s.len() => Ok(String(s
+                                                                              .chars()
+                                                                              .nth(*i as usize)
+                                                                              .unwrap()
+                                                                              .to_string())),
+                invalid => Err(format!("invalid index '{}'", invalid))
+            },
+            invalid => Err(format!("invalid list '{}'", invalid))
         }
-        invalid => Err(format!("invalid index '{}'", invalid))
+    } else {
+        Err(format!("function 'nth' takes 2 parameter(s), found {} instead", arguments.len()))
+    }
+}
+
+fn slice(arguments: Vec<Value>) -> Result {
+    use Value::*;
+
+    let length = arguments.len();
+
+    if length < 1 || length > 3 {
+        Err(format!("function 'slice' takes 1, 2 or 3 parameters, found {} instead", length))
+    } else {
+        let mut low = 0;
+        let mut high;
+
+        match &arguments[0] {
+            String(s) => high = s.len(),
+            List(l) => high = l.len(),
+            invalid => return Err(format!("invalid sequence '{}'", invalid))
+        }
+
+        if arguments.len() > 1 {
+            match &arguments[1] {
+                Number(n) if *n as usize <= high => {low = *n as usize;}
+                invalid => return Err(format!("invalid index '{}'", invalid))
+            }
+        }
+
+        if arguments.len() > 2 {
+            match &arguments[2] {
+                Number(n) if *n as usize <= high => {high = *n as usize;}
+                invalid => return Err(format!("invalid index '{}'", invalid))
+            }
+        }
+
+        match &arguments[0] {
+            String(s) => Ok(String(s[low..high].to_string())),
+            List(l) => Ok(List(l[low..high].to_vec())),
+            invalid => Err(format!("invalid sequence '{}'", invalid))
+        }
     }
 }
 
 fn length(arguments: Vec<Value>) -> Result {
     use Value::*;
     match &arguments[0] {
-        String(s) | Symbol(s) => Ok(Number(s.len() as f64)),
+        String(s) => Ok(Number(s.len() as f64)),
         List(l) => Ok(Number(l.len() as f64)),
         _ => Ok(Nil)
     }
@@ -226,7 +263,7 @@ fn range(arguments: Vec<Value>) -> Result {
 
     match (&low, &high) {
         (Number(low), Number(high)) => {
-            let result = (*low as i64..=*high as i64).map(|n| Number(n as f64)).collect();
+            let result = (*low as i64..*high as i64).map(|n| Number(n as f64)).collect();
             Ok(List(result))
         }
         _ => Err(format!("invalid limits '{}' and '{}' provided to function 'range'",
@@ -242,9 +279,10 @@ pub fn load(ast: &mut Ast) {
     ast.define("car", Native(car));
     ast.define("cdr", Native(cdr));
     ast.define("nth", Native(nth));
-    ast.define("cons", Native(append));
-    ast.define("append", Native(append));
+    ast.define("cons", Native(cons));
+    ast.define("append", Native(cons));
     ast.define("print", Native(print));
+    ast.define("slice", Native(slice));
 
     // Boolean conditions
     ast.define("and", Native(bool_condition!(false, |a, b| a && b)));
@@ -257,9 +295,11 @@ pub fn load(ast: &mut Ast) {
 
     // Types
     ast.define("nil?", Native(bool_unary!("nil?", |v| ast::is_nil(&v))));
+    ast.define("symbol?", Native(bool_unary!("symbol?", |v| if let Symbol(_) = v {true} else {false})));
     ast.define("string?", Native(bool_unary!("string?", |v| if let String(_) = v {true} else {false})));
     ast.define("number?", Native(bool_unary!("number?", |v| if let Number(_) = v {true} else {false})));
     ast.define("bool?", Native(bool_unary!("bool?", |v| if let Boolean(_) = v {true} else {false})));
+    ast.define("list?", Native(bool_unary!("list?", |v| if let List(_) = v {true} else {false})));
     
     // Arithmetic conditions
     ast.define("<", Native(arith_condition!(|a, b| a < b)));
@@ -279,30 +319,38 @@ pub fn load(ast: &mut Ast) {
     ast.define("concat", Native(concat));
     ast.define("range", Native(range));
 
-    define_lambda(ast, "even", "
-(lambda (number)
-  (= (% number 2) 0))");
+    ast.run(parser::tokenize("
+(let even
+  (lambda (number)
+    (= (% number 2) 0)))
 
-    define_lambda(ast, "odd", "
-(lambda (number)
-  (= (% number 2) 1))");
+(let even
+  (lambda (number)
+    (= (% number 2) 1)))
 
-    define_lambda(ast, "map", "
-(lambda (function list)
-  (let ((result '()))
-    (while (not (nil? list))
-      (set result (cons result (function (car list)))
-           list (cdr list)))
-    result))");
+(let map
+  (lambda (function list)
+    (let ((result '()))
+        (dolist (i list)
+          (set result (cons result (function i))))
+        result)))
 
-    define_lambda(ast, "filter", "
-(lambda (predicate list)
-  (let ((result '())
-        (head nil))
-    (while (not (nil? list))
-      (set head (car list)
-           list (cdr list))
-      (when (predicate head)
-        (set result (cons result head))))
-    result))");
+(let filter
+  (lambda (predicate list)
+    (let ((result '()))
+      (dolist (i list)
+        (when (predicate i)
+          (set result (cons result i))))
+      result)))
+
+(let set-nth
+  (macro
+     (list index value)
+     (eval
+      `(set ,list (cons
+                   (slice ,list 0 ,index)
+                   ,value
+                   (slice ,list ,(+ index 1)))))))
+
+".to_string())).expect("100% rust bug not mine");
 }

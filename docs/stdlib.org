@@ -1,3 +1,278 @@
+* Special Forms
+** ~(let [BINDINGS])~
+Define bindings in the global or local scope, depending on the syntax
+used. See the examples to understand the form differences.
+
+Returns ~nil~.
+
+- Create global bindings:
+#+begin_src lisp
+(let global-value 'foo
+     another-global 'bar)
+#+end_src
+
+- Create local bindings:
+#+begin_src lisp
+(let ((local-binding 'foo)
+      (another-local 'bar))
+  (print (concat local-binding another-local)))
+#+end_src
+
+** ~(set [BINDINGS])~
+Assign a value to a symbol which already exists in the current scope.
+This special form cannot define symbols, an attempt to do so will
+result in an error.
+
+If a symbol in the local scope shadows another in the global scope,
+the assigment will be done to the symbol in the local scope.
+
+Returns ~nil~.
+
+#+begin_src lisp
+(let number 69)
+(print number)     ; => 69
+
+(set number 420)
+(print number)     ; => 420
+
+(let ((number 42))
+  (print number)   ; => 42
+  (set number 96)
+  (print number))  ; => 96
+
+(print number)     ; => 420
+#+end_src
+
+** ~(do [BODY])~
+Evaluate the expressions in the ~BODY~ sequentially.
+
+Returns the last evaluated value.
+
+#+begin_src lisp
+(do
+ (print 'foo)
+ (print 'bar)
+ (+ 2 2))      ; => 4
+
+(do
+ (print 'foo)
+ (print 'bar)) ; => nil
+#+end_src
+
+** ~(if [CONDITION] [CONSEQUENCE] [ANTECEDENCE])~
+If ~CONDITION~ evaluates to a truthy value, evaluates the
+~CONSEQUENCE~ branch. Else evaluates the ~ANTECEDENCE branch.
+
+Returns the evaluation result of the required branch if the branch
+exists, else ~nil~.
+
+#+begin_src lisp
+(if)                                    ; => nil
+(if true)                               ; => nil
+(if 1 2)                                ; => 2
+(if 0 2 "zero is false")                ; => zero is false
+(if (< 4 5) (print "4 is less than 5")) ; => 4 is less than 5
+
+(if false
+    (print "unsafe {}")
+  (print "If it compiles, it works!"))  ; => If it compiles, it works!
+
+(if 'blah
+    (do
+     (let var 'foo-bar)
+     (print var)))                      ; => foo-bar
+#+end_src
+
+** ~(when [CONDITION] [BODY])~
+Behaves like the following.
+
+#+begin_src lisp
+(if CONDITION
+    (do BODY))
+#+end_src
+
+** ~(unless [CONDITION] [BODY])~
+Behaves like the following.
+
+#+begin_src lisp
+(if CONDITION
+    nil
+  (do BODY))
+#+end_src
+
+** ~(dolist [(ITERATOR LIST)] [BODY])~
+Like ~foreach~ in most languages.
+
+Returns ~nil~.
+
+#+begin_src lisp
+(dolist)                ; => nil
+
+(dolist (i '(1 2 3 4))
+  (print i))            ; => nil
+
+(dolist (i '(1 2 3 4))
+  (print i)
+  (* i 2))              ; => nil
+#+end_src
+
+** ~(while [CONDITION] [BODY])~
+While loops. Evaluates ~BODY~ while ~CONDITION~ is truthy.
+
+Returns the last evaluated value.
+
+#+begin_src lisp
+(while)                 ; => nil
+
+;; Print the numbers from one to ten, return nil
+(let i 0)
+(while (i < 10)
+  (+= i 1)
+  (print i))            ; => nil
+
+;; Print the numbers from one to ten, return (* i 2)
+(let i 0)
+(while (i < 10)
+  (+= i 1)
+  (print i)
+  (* i 2))              ; => 20
+#+end_src
+
+** ~(lambda ([ARGUMENTS]) [BODY])~
+Create a lambda.
+
+Returns the lambda created, which in turn returns the last evaluated
+expression in ~BODY~.
+
+#+begin_src lisp
+(lambda (n) (* n 2))     ; => #<lambda>
+((lambda (n) (* n 2)) 2) ; => 4
+
+(let repeat (lambda (string times)
+              (while (> times 0)
+                (print string)
+                (-= times 1))))
+
+;; Print "Hello, world" 3 times
+(repeat "Hello, world" 3)
+#+end_src
+
+A variadic parameter is defined by prepending the last parameter of
+the lambda with the ~:rest~ symbol. Note that you can have
+non-variadic parameters before the variadic parameter.
+
+The variadic parameter is assigned to the list of all the values which
+exceed the count of the non-variadic parameters. It can be an empty
+list, if no variadic arguments were provided.
+
+#+begin_src lisp
+(let add (lambda (:rest numbers)
+           (let ((result 0))
+             (dolist (i numbers)
+               (+= result i))
+             result)))
+
+(let subtract (lambda (first :rest numbers)
+                (let ((result first))
+                  (dolist (i numbers)
+                    (-= result i))
+                  result)))
+
+(add 1 2 3 4)   ; => 10
+(add)           ; => 0
+
+(subtract 10 5) ; => 5
+(subtract 3)    ; => 3
+(subtract)      ; => error: variadic function 'subtract' takes at least 1 parameter(s), found 0 instead
+#+end_src
+
+** ~(macro ([ARGUMENTS]) [BODY])~
+Create a macro. It behaves like a lambda in every way, except that the
+arguments are not evaluated. It can be thought of as a /lazy/ lambda,
+for those who have programmed in lazily executed languages like
+Haskell before.
+
+Returns the macro created, which in turn returns the last evaluated
+expression in ~BODY~.
+
+#+begin_src lisp
+(macro (n) (* n 2))      ; => #<macro>
+((macro (n) (* n 2)) 2)  ; => 4
+((macro (v) v) foo)      ; => foo
+
+;; Implement `dolist' in terms of a macro
+(let dolist
+  (macro
+   (decl :rest body)
+   (eval
+    `(let ((list ,(nth 1 decl))
+           (,(car decl) nil))
+       (while (not (nil? list))
+         (set ,(car decl) (car list))
+         (set list (cdr list))
+         ,@body)))))
+
+;; Print "i: N" where 1 <= N <= 4
+(dolist (range 1 4)
+  (print (concat "i: " i)))
+#+end_src
+
+Variadics in macros work the same way as in lambdas.
+
+#+begin_src lisp
+(let echo (macro (:rest list)
+            (dolist (i list)
+              (print i))))
+
+;; Print the arguments 1, 2, 3 and 4 separated by a newline
+(echo 1 2 3 4)
+
+;; Print nothing
+(echo)
+
+;; Symbol 'foo' neither exists nor is quoted, yet it behaves like
+;; quotation. This is the fundamental difference between lambdas and
+;; macros.
+(echo foo) ; => foo
+#+end_src
+
+** ~(quote SEXP)~
+Quote an expression. Shorthand exists for this operation.
+
+#+begin_src lisp
+(quote (1 2 3 4)) ; => (1 2 3 4)
+(quote symbol)    ; => symbol
+
+'(1 2 3 4)        ; => (1 2 3 4)
+'symbol           ; => symbol
+#+end_src
+
+** ~(quasiquote SEXP)~
+Quasi quote an expression. Shorthand exists for this operation.
+
+#+begin_src lisp
+(quasi-quote (1 2 3 4))                 ; => (1 2 3 4)
+(quasi-quote (1 2 (unquote (+ 1 2))))   ; => (1 2 3)
+(quasi-quote (1 2 (unquote-splice
+                   (3 4 5 6))))         ; => (1 2 3 4 5 6)
+
+`(1 2 3 4)                              ; => (1 2 3 4)
+`(1 2 ,(+ 1 2))                         ; => (1 2 3)
+`(1 2 ,@(3 4 5 6))                      ; => (1 2 3 4 5 6)
+#+end_src
+
+** ~(eval SEXP)~
+If ~SEXP~ is a string, interpret it as lust source code. Evaluate all
+other expression types.
+
+Return the evaluation result.
+
+#+begin_src lisp
+(eval 'foo)        ; => foo
+(eval '(+ 1 2 3))  ; => 6
+(eval "(+ 4 5 6)") ; => 15
+#+end_src
+
 * Ad-hoc primitives
 ** ~(car LIST)~
 Return the head of ~LIST~.
@@ -15,27 +290,42 @@ Return the tail of ~LIST~.
 (cdr list) ; => (2 3 4 5)
 #+end_src
 
-** ~(nth INDEX LIST)~
-Return the ~INDEX~-th element of ~LIST~.
+** ~(nth N SEQUENCE)~
+Return the ~N~-th element of ~SEQUENCE~.
 
 #+begin_src lisp
 (let list '(1 2 3 4 5))
-(nth 0 list) ; => 1
-(nth 9 list) ; => nil
+(nth 0 list)     ; => 1
+(nth 9 list)     ; => nil
+(nth 2 "string") ; => r
 #+end_src
 
 ** ~(cons VALUE ...)~
 Combine the values together into a single list.
 
 #+begin_src lisp
-(cons '(1 2) '(3 4) '((5 6) 7)) ; => (1 2 3 4 5 6 7)
+(cons '(1 2) '(3 4) '((5 6) 7)) ; => (1 2 3 4 (5 6) 7)
+#+end_src
+
+** ~(slice SEQUENCE [LOWER] [UPPER])~
+Slice ~SEQUENCE~ by the bounds supplied, defaulting to the two ends
+respectively.
+
+#+begin_src lisp
+(slice '(1 2 3 4 5))     ; => (1 2 3 4 5)
+(slice '(1 2 3 4 5) 1)   ; => (2 3 4 5)
+(slice '(1 2 3 4 5) 1 3) ; => (2 3 4)
+
+(slice "message")        ; => "message"
+(slice "message" 1)      ; => "essage"
+(slice "message" 1 4)    ; => "ess"
 #+end_src
 
 ** ~(append VALUE ...)~
-Same as =cons=
+Same as =cons=.
 
 #+begin_src lisp
-(append '(1 2) '(3 4) '((5 6) 7)) ; => (1 2 3 4 5 6 7)
+(append '(1 2) '(3 4) '((5 6) 7)) ; => (1 2 3 4 (5 6) 7)
 #+end_src
 
 Only there for domain-specific terms, which I think is super important
@@ -154,6 +444,18 @@ Checks if ~VALUE~ is a string.
 (string? "str") ; => true
 #+end_src
 
+** ~(symbol? VALUE)~
+Checks if ~VALUE~ is a symbol.
+
+#+begin_src lisp
+(symbol? nil)   ; => false
+(symbol? '(1))  ; => false
+(symbol? false) ; => false
+(symbol? "str") ; => false
+
+(symbol? 'foo)  ; => true
+#+end_src
+
 ** ~(bool? VALUE)~
 Checks if ~VALUE~ is a boolean.
 
@@ -163,6 +465,19 @@ Checks if ~VALUE~ is a boolean.
 (bool? false) ; => false
 
 (bool? "str") ; => true
+#+end_src
+
+** ~(list? VALUE)~
+Checks if ~VALUE~ is a list.
+
+#+begin_src lisp
+(list? nil)    ; => false
+(list? false)  ; => false
+(list? "str")  ; => false
+
+(list? '())    ; => true
+(list? '(1 2)) ; => true
+(list? '(- 2)) ; => true
 #+end_src
 
 * Arithmetic conditions
@@ -319,11 +634,11 @@ Concat several values together into a single string.
 
 ** ~(range BOUND [BOUND])~
 Generate a range of numbers, whose lower boundary defaults to ~0~. The
-upper boundary is inclusive.
+upper boundary is exclusive.
 
 #+begin_src lisp
-(range 5)   ; => (0 1 2 3 4 5)
-(range 2 6) ; => (2 3 4 5 6)
+(range 5)   ; => (0 1 2 3 4)
+(range 2 7) ; => (2 3 4 5 6)
 #+end_src
 
 ** ~(even NUMBER)~
@@ -351,11 +666,23 @@ from the results.
 (map even '(1 2 3 4))                 ; => (false true false true)
 #+end_src
 
-** ~(filter FUNCTION LIST)~
-Execute ~FUNCTION~ on every item in ~LIST~ and generate a new list
-from the items for which ~(FUNCTION item)~ returned a truthy value.
+** ~(filter PREDICATE LIST)~
+Execute ~PREDICATE~ on every item in ~LIST~ and generate a new list
+from the items for which ~(PREDICATE item)~ returned a truthy value.
 
 #+begin_src lisp
 (filter even '(1 2 3 4)) ; => (2 4)
 (filter odd '(1 2 3 4))  ; => (1 3)
+#+end_src
+
+** ~(set-nth LIST N VALUE)~
+Set the ~N~-th element of ~LIST~ to ~VALUE~. The list supplied must be
+defined in the current scope, anonymous lists are not allowed.
+
+#+begin_src lisp
+(let list '(1 2 3 4 5))
+(print list) ; => (1 2 3 4 5)
+
+(set-nth list 1 'meh)
+(print list) ; => (1 'meh 3 4 5)
 #+end_src

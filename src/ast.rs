@@ -390,32 +390,60 @@ impl Ast {
         }
     }
 
-    pub fn eval_define(&mut self, arguments: &[Value]) -> Result {
+    pub fn eval_let(&mut self, arguments: &[Value]) -> Result {
         use Value::*;
 
-        if arguments.len() < 1 {
-            Err("improper form of global binding".to_string())
-        } else {
-            let mut i = 0;
-            while i < arguments.len() {
-                match &arguments[i] {
-                    Symbol(symbol) => if arguments.len() - 1 > i {
-                        i += 1;
-
-                        match self.eval(arguments[i].clone()) {
-                            Ok(value) => self.define(&symbol, value),
-                            error => return error
-                        }
-                    } else {
-                        self.define(&symbol, Nil);
-                    }
-                    invalid => return Err(format!("invalid global binding '{}'", invalid))
-                }
-
-                i += 1;
-            }
-
+        if arguments.len() == 0 {
             Ok(Nil)
+        } else {
+            match &arguments[0] {
+                List(scope) => {
+                    let mut env = Env::new();
+
+                    for binding in scope.iter() {
+                        match binding {
+                            List(binding) => match &binding[0] {
+                                Symbol(symbol) => if binding.len() == 2 {
+                                    match self.eval(binding[1].clone()) {
+                                        Ok(value) => { env.insert(symbol.to_string(), value); }
+                                        error => return error,
+                                    }
+                                } else {
+                                    env.insert(symbol.to_string(), Nil);
+                                },
+                                invalid => return Err(format!("invalid variable '{}' in let", invalid))
+                            },
+                            invalid => return Err(format!("invalid binding '{}' in let", invalid))
+                        }
+                    }
+
+                    self.last_scope().push(env);
+                    let result = self.eval_do(&arguments[1..]);
+                    self.last_scope().pop();
+                    result
+                },
+                _ => {
+                    let mut i = 0;
+                    while i < arguments.len() {
+                        match &arguments[i] {
+                            Symbol(symbol) => if arguments.len() - 1 > i {
+                                i += 1;
+
+                                match self.eval(arguments[i].clone()) {
+                                    Ok(value) => self.define(&symbol, value),
+                                    error => return error
+                                }
+                            } else {
+                                self.define(&symbol, Nil);
+                            }
+                            invalid => return Err(format!("invalid global binding '{}'", invalid))
+                        }
+
+                        i += 1;
+                    }
+                    Ok(Nil)
+                }
+            }
         }
     }
 
@@ -543,51 +571,18 @@ impl Ast {
     pub fn eval_eval(&mut self, arguments: &[Value]) -> Result {
         use Value::*;
 
-        match arguments[0].clone() {
-            String(s) => match self.run(parser::tokenize(s)) {
-                Some(value) => Ok(value),
-                None => Ok(Nil)
-            },
-            _ => match self.eval(arguments[0].clone()) {
-                Ok(value) => self.eval(value),
-                error => error
-            }
-        }
-    }
-
-    pub fn eval_let(&mut self, arguments: &[Value]) -> Result {
-        use Value::*;
-
-        if arguments.len() == 0 {
+        if arguments.len() < 1 {
             Ok(Nil)
         } else {
-            match &arguments[0] {
-                List(scope) => {
-                    let mut env = Env::new();
-
-                    for binding in scope.iter() {
-                        match binding {
-                            List(binding) => match &binding[0] {
-                                Symbol(symbol) => if binding.len() == 2 {
-                                    match self.eval(binding[1].clone()) {
-                                        Ok(value) => { env.insert(symbol.to_string(), value); }
-                                        error => return error,
-                                    }
-                                } else {
-                                    env.insert(symbol.to_string(), Nil);
-                                },
-                                invalid => return Err(format!("invalid variable '{}' in let", invalid))
-                            },
-                            invalid => return Err(format!("invalid binding '{}' in let", invalid))
-                        }
-                    }
-
-                    self.last_scope().push(env);
-                    let result = self.eval_do(&arguments[1..]);
-                    self.last_scope().pop();
-                    result
+            match arguments[0].clone() {
+                String(s) => match self.run(parser::tokenize(s)) {
+                    Some(value) => Ok(value),
+                    None => Ok(Nil)
                 },
-                _ => Err("invalid form of let".to_string())
+                _ => match self.eval(arguments[0].clone()) {
+                    Ok(value) => self.eval(value),
+                    error => error
+                }
             }
         }
     }
@@ -607,10 +602,15 @@ impl Ast {
                                 error => return error
                             },
 
-                            Symbol(s) if s == "unquote-variadic" => match self.eval(list[1].clone()) {
-                                Ok(List(value)) => result.extend(value),
-                                Ok(value) => result.push(value),
-                                error => return error
+                            Symbol(s) if s == "unquote-splice" => {
+                                match list[1].clone() {
+                                    List(list) => result.extend(list),
+                                    symbol => match self.eval(symbol) {
+                                        Ok(List(list)) => result.extend(list),
+                                        Ok(value) => result.push(value),
+                                        error => return error
+                                    }
+                                }
                             },
 
                             _ => match self.eval_quasiquote(List(list)) {
@@ -633,34 +633,32 @@ impl Ast {
     pub fn eval_call(&mut self, name: String, arguments: &[Value]) -> Result {
         use Value::*;
 
-        match &name[..] {
-            "define" => self.eval_define(arguments),
-            "quote" => Ok(arguments[0].clone()),
-            "quasiquote" => self.eval_quasiquote(arguments[0].clone()),
-            "let" => self.eval_let(arguments),
-            "set" => self.eval_set(arguments),
-            "do" => self.eval_do(arguments),
-            "if" => self.eval_if(arguments),
-            "when" => self.eval_do_condition(arguments, true),
-            "unless" => self.eval_do_condition(arguments, false),
-            "dolist" => self.eval_dolist(arguments),
-            "while" => self.eval_while(arguments),
-            "lambda" => eval_lambda_form(arguments, false),
-            "macro" => eval_lambda_form(arguments, true),
-            "eval" => self.eval_eval(arguments),
-
-            function => match self.lookup(function) {
-                Ok(value) => match value {
-                    Native(f) => self.eval_native(name, f, arguments),
-                    Lambda(is_macro, variadic, parameters, body) => self.eval_lambda(name,
-                                                                                     parameters,
-                                                                                     arguments,
-                                                                                     variadic,
-                                                                                     is_macro,
-                                                                                     body),
-                    invalid => Err(format!("invalid function '{}'", invalid))
-                },
-                error => error
+        match self.lookup(&name) {
+            Ok(value) => match value {
+                Native(f) => self.eval_native(name, f, arguments),
+                Lambda(is_macro, variadic, parameters, body) => self.eval_lambda(name,
+                                                                                 parameters,
+                                                                                 arguments,
+                                                                                 variadic,
+                                                                                 is_macro,
+                                                                                 body),
+                invalid => Err(format!("invalid function '{}'", invalid))
+            },
+            error => match &name[..] {
+                "let" => self.eval_let(arguments),
+                "set" => self.eval_set(arguments),
+                "do" => self.eval_do(arguments),
+                "if" => self.eval_if(arguments),
+                "when" => self.eval_do_condition(arguments, true),
+                "unless" => self.eval_do_condition(arguments, false),
+                "dolist" => self.eval_dolist(arguments),
+                "while" => self.eval_while(arguments),
+                "lambda" => eval_lambda_form(arguments, false),
+                "macro" => eval_lambda_form(arguments, true),
+                "quote" => Ok(arguments[0].clone()),
+                "quasiquote" => self.eval_quasiquote(arguments[0].clone()),
+                "eval" => self.eval_eval(arguments),
+                _ => error
             }
         }
     }

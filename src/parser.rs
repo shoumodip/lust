@@ -113,24 +113,6 @@ impl Parser {
         }
     }
 
-    pub fn parse_list(&mut self, list: &mut Vec<Value>) {
-        use Value::*;
-
-        if list.len() == 0 {
-            return;
-        }
-
-        if let Symbol(s) = &list[0] {
-            match &s[..] {
-                "let" => match &list[1] {
-                    Symbol(_) => list[0] = Symbol("define".to_string()),
-                    _ => {}
-                },
-                _ => {}
-            }
-        }
-    }
-
     pub fn read_list(&mut self) -> Result {
         let mut list = vec![];
         self.advance();
@@ -147,7 +129,6 @@ impl Parser {
         } else {
             self.advance();
             self.skip_whitespace();
-            self.parse_list(&mut list);
             Ok(Value::List(list))
         }
     }
@@ -184,7 +165,7 @@ impl Parser {
                 '\'' => self.read_quote("quote"),
                 '`' => self.read_quote("quasiquote"),
                 ',' => if self.consume('@') {
-                    self.read_quote("unquote-variadic")
+                    self.read_quote("unquote-splice")
                 } else {
                     self.read_quote("unquote")
                 },
