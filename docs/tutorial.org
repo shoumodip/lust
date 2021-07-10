@@ -809,7 +809,7 @@ So the *final* definition of the foreach macro:
 #+begin_src lisp
 (let foreach
   (macro
-   (var list :rest body)     ; Make the body variadic
+   (var list :rest body)
    (eval
     `(let ((,var nil)
            (list ,list))
