@@ -61,7 +61,7 @@ Returns the last evaluated value.
 
 ** ~(if [CONDITION] [CONSEQUENCE] [ANTECEDENCE])~
 If ~CONDITION~ evaluates to a truthy value, evaluates the
-~CONSEQUENCE~ branch. Else evaluates the ~ANTECEDENCE branch.
+~CONSEQUENCE~ branch. Else evaluates the ~ANTECEDENCE~ branch.
 
 Returns the evaluation result of the required branch if the branch
 exists, else ~nil~.
@@ -279,7 +279,7 @@ Return the head of ~LIST~.
 
 #+begin_src lisp
 (let list '(1 2 3 4 5))
-(car list) ; => (1)
+(car list) ; => 1
 #+end_src
 
 ** ~(cdr LIST)~
@@ -307,6 +307,16 @@ Combine the values together into a single list.
 (cons '(1 2) '(3 4) '((5 6) 7)) ; => (1 2 3 4 (5 6) 7)
 #+end_src
 
+** ~(append VALUE ...)~
+Same as =cons=.
+
+#+begin_src lisp
+(append '(1 2) '(3 4) '((5 6) 7)) ; => (1 2 3 4 (5 6) 7)
+#+end_src
+
+Only there for domain-specific terms, which I think is super important
+for writing readable code.
+
 ** ~(slice SEQUENCE [LOWER] [UPPER])~
 Slice ~SEQUENCE~ by the bounds supplied, defaulting to the two ends
 respectively.
@@ -321,15 +331,30 @@ respectively.
 (slice "message" 1 4)    ; => "ess"
 #+end_src
 
-** ~(append VALUE ...)~
-Same as =cons=.
+** ~(length SEQUENCE)~
+Returns the number of items in ~SEQUENCE~.
 
 #+begin_src lisp
-(append '(1 2) '(3 4) '((5 6) 7)) ; => (1 2 3 4 (5 6) 7)
+(length "Hello, world") ; => 12
+(length '(0 1 2 3 4))   ; 5
 #+end_src
 
-Only there for domain-specific terms, which I think is super important
-for writing readable code.
+** ~(concat VALUE ...)~
+Concat several values together into a single string.
+
+#+begin_src lisp
+(concat "Hello, " 'world)    ; => "Hello, world"
+(length 42 " is the answer") ; => "42 is the answer"
+#+end_src
+
+** ~(range BOUND [BOUND])~
+Generate a range of numbers, whose lower boundary defaults to ~0~. The
+upper boundary is exclusive.
+
+#+begin_src lisp
+(range 5)   ; => (0 1 2 3 4)
+(range 2 7) ; => (2 3 4 5 6)
+#+end_src
 
 ** ~(print VALUE ...)~
 Print the values sequentially separated by newlines.
@@ -616,31 +641,6 @@ Performs modulo on ~VALUE~ by ~NUMBER~.
 #+end_src
 
 * QoL functions
-** ~(length SEQUENCE)~
-Returns the number of items in ~SEQUENCE~.
-
-#+begin_src lisp
-(length "Hello, world") ; => 12
-(length '(0 1 2 3 4))   ; 5
-#+end_src
-
-** ~(concat VALUE ...)~
-Concat several values together into a single string.
-
-#+begin_src lisp
-(concat "Hello, " 'world)    ; => "Hello, world"
-(length 42 " is the answer") ; => "42 is the answer"
-#+end_src
-
-** ~(range BOUND [BOUND])~
-Generate a range of numbers, whose lower boundary defaults to ~0~. The
-upper boundary is exclusive.
-
-#+begin_src lisp
-(range 5)   ; => (0 1 2 3 4)
-(range 2 7) ; => (2 3 4 5 6)
-#+end_src
-
 ** ~(even NUMBER)~
 Return ~true~ if ~NUMBER~ is even.
 
@@ -681,8 +681,10 @@ defined in the current scope, anonymous lists are not allowed.
 
 #+begin_src lisp
 (let list '(1 2 3 4 5))
-(print list) ; => (1 2 3 4 5)
+(print list)            ; => (1 2 3 4 5)
 
 (set-nth list 1 'meh)
-(print list) ; => (1 'meh 3 4 5)
+(print list)            ; => (1 'meh 3 4 5)
+
+(set-nth '(1 2) 1 'lol) ; => error: invalid binding '(quote (1 2))' in set
 #+end_src
