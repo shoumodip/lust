@@ -752,7 +752,7 @@ let's fix that.
        ,body))))
 #+end_src
 
-Before explainations, let's run it.
+Before explanations, let's run it.
 
 #+begin_src console
 $ lust foreach.lisp
@@ -780,21 +780,20 @@ is an error. You cannot invoke ~nil~ as a function.
 
 #+begin_src lisp
 > `(1 2 3 ,((+ 2 3 4) (+ 2 3 4)))
-> `(1 2 3 (9 9))                  ; Evaluates the list
+> `(1 2 3 (9 9))                   ; Evaluates the list
 error: invalid function '9'
 #+end_src
 
 In Javascript lingo, "undefined is not a function".
 
-This is where ',@' comes into play. Instead of the standard ~unquote~
-behaviour, it unquotes expressions and splices in the values.
+This is where =unquote-splice= comes into play. Instead of the
+standard ~unquote~ behaviour, it unquotes expressions and splices in
+the values.
 
 #+begin_src lisp
-> `(1 2 3 ,@((+ 2 3 4) (+ 2 3 4)))
-> `(1 2 3 (+ 2 3 4) (+ 2 3 4))    ; Unwraps the list
+> `(1 2 3 ,@((+ 2 3 4) (+ 2 3 4))) ; ,@ is shorthand for `unquote-splice'
+> `(1 2 3 (+ 2 3 4) (+ 2 3 4))     ; Unwraps the list
 #+end_src
-
-Note that ',@' is shorthand for ~unquote-splice~.
 
 Now the parameter ~body~ in this macro gets assigned to this.
 
