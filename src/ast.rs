@@ -53,8 +53,9 @@ pub fn eval_lambda_form(arguments: &[Value], is_macro: bool) -> Result {
 
                 for parameter in lambda_parameters {
                     match parameter {
-                        Symbol(s) if s == ":rest" => variadic = true,
-                        Symbol(s) => {
+                        Symbol(s) => if s == ":rest" {
+                            variadic = true;
+                        } else {
                             parameters.push(s.clone());
                             if variadic {
                                 variadic_unnamed = false;
