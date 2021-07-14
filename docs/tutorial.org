@@ -8,7 +8,7 @@ lisp, the only thing that differs is the function names and the
 implemented special forms. Throughout the document I will switch
 between the terms "lisp" and "lust". Don't think twice about it.
 
-This document will also refer to Javascript in order to explaing the
+This document will also refer to Javascript in order to explain the
 workings of lisp, as I believe it is a good scripting language with a
 decent syntax. Now if only it had static typing without a language
 transpiler...
@@ -410,7 +410,7 @@ if user.madeFunOfLisp() {
     console.log("You did the right thing!")
     console.log("Use JS! Everything else sucks!")
 } else {
-    console.log("LISP: Lots of Irritation Superfluous Parenthesis")
+    console.log("LISP: Lots of Irritating Superfluous Parenthesis")
 }
 #+end_src
 

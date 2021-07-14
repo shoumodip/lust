@@ -53,14 +53,12 @@ pub fn eval_lambda_form(arguments: &[Value], is_macro: bool) -> Result {
 
                 for parameter in lambda_parameters {
                     match parameter {
-                        Symbol(s) => match &s[..] {
-                            ":rest" => variadic = true,
-                            _ => {
-                                parameters.push(s.clone());
-                                if variadic {
-                                    variadic_unnamed = false;
-                                    break;
-                                }
+                        Symbol(s) if s == ":rest" => variadic = true,
+                        Symbol(s) => {
+                            parameters.push(s.clone());
+                            if variadic {
+                                variadic_unnamed = false;
+                                break;
                             }
                         }
 
@@ -304,11 +302,6 @@ impl Ast {
             }
         }
 
-        if arguments_length != parameters_length + 1 {
-            if !variadic || arguments_length < parameters.len() {
-            }
-        }
-
         let mut env = Env::new();
 
         for i in 0..parameters_length {
@@ -324,7 +317,7 @@ impl Ast {
             }
         }
 
-        if variadic && arguments_length > parameters_length - 1 {
+        if variadic && arguments_length >= parameters_length {
             let mut variadic = vec![];
 
             for i in parameters_length - 1..arguments_length {
