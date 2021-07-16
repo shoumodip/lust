@@ -24,6 +24,7 @@ pub fn is_true(value: &Value) -> bool {
     use Value::*;
     match value {
         Number(n) if *n == 0.0 => false,
+        List(l) if l.len() == 0 => false,
         Boolean(false) => false,
         Nil => false,
         _ => true
@@ -578,15 +579,18 @@ impl Ast {
         if arguments.len() < 1 {
             Ok(Nil)
         } else {
-            match arguments[0].clone() {
-                String(s) => match self.run(parser::tokenize(s)) {
-                    Some(value) => Ok(value),
-                    None => Ok(Nil)
+            match self.eval(arguments[0].clone()) {
+                Ok(String(s)) => {
+                    match self.run(parser::tokenize(s)) {
+                        Some(value) => Ok(value),
+                        None => Ok(Nil)
+                    }  
                 },
-                _ => match self.eval(arguments[0].clone()) {
+                Ok(sexp) => match self.eval(sexp) {
                     Ok(value) => self.eval(value),
                     error => error
-                }
+                },
+                error => error
             }
         }
     }

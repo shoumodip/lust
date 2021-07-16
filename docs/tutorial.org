@@ -336,7 +336,7 @@ to standard output, while the function ~even~ checks if something is
 even or odd.
 
 #+begin_src lisp
-(if (even 4)
+(if (even? 4)
     (print "even")
   (print "odd"))
 #+end_src
@@ -347,7 +347,7 @@ that mean, if-else is a function?
 Let's try to guess how evaluation works here. In a function call, the
 arguments are evaluated in order, and the results of the all the
 evalutions are used to call the function. So that means, the arguments
-~(even 4)~, ~(print "even")~ and ~(print "odd")~ are evaluated first,
+~(even? 4)~, ~(print "even")~ and ~(print "odd")~ are evaluated first,
 then they are passed on to the function ~if~.
 
 So this expression should print ~even~ and ~odd~ both, thereby making
@@ -378,7 +378,7 @@ $ touch expression.lisp
 #+begin_src lisp
 ;; FILE: expression.lisp
 (print 
- (if (even 4)
+ (if (even? 4)
      (+ 2 3)
    2))
 #+end_src

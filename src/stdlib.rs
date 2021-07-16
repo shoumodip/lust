@@ -1,5 +1,7 @@
 use crate::ast::{self, Ast, Result, Value};
 use crate::parser;
+use std::io::{self, Write};
+use std::fs;
 
 macro_rules! equality {
     ($predicate: expr) => {{
@@ -124,6 +126,38 @@ fn print(arguments: Vec<Value>) -> Result {
         println!("{}", argument);
     }
     Ok(Value::Nil)
+}
+
+fn read(arguments: Vec<Value>) -> Result {
+    if arguments.len() > 0 {
+        print!("{}", arguments[0]);
+    }
+
+    let mut input = String::new();
+
+    io::stdout().flush().expect("failed to flush stdout");
+    io::stdin().read_line(&mut input).expect("failed to read from stdin");
+
+    input.pop();
+    Ok(Value::String(input))
+}
+
+fn open(arguments: Vec<Value>) -> Result {
+    use Value::*;
+
+    if arguments.len() == 1 {
+        match &arguments[0] {
+            String(file_path) | Symbol(file_path) => {
+                match fs::read_to_string(file_path) {
+                    Ok(contents) => Ok(String(contents)),
+                    Err(error) => Err(format!("could not read file '{}': {}", file_path, error))
+                }
+            },
+            invalid => Err(format!("invalid file path '{}'", invalid))
+        }
+    } else {
+        Err(format!("function 'open' takes 1 parameter(s), found {} instead", arguments.len()))
+    }
 }
 
 fn cons(arguments: Vec<Value>) -> Result {
@@ -327,6 +361,8 @@ pub fn load(ast: &mut Ast) {
     ast.define("cons", Native(cons));
     ast.define("append", Native(cons));
     ast.define("print", Native(print));
+    ast.define("read", Native(read));
+    ast.define("open", Native(open));
     ast.define("slice", Native(slice));
 
     // Boolean conditions
@@ -368,32 +404,7 @@ pub fn load(ast: &mut Ast) {
     ast.define("range", Native(range));
 
     ast.run(parser::tokenize("
-(let even (lambda (number)
-            (= (% number 2) 0))
-     even (lambda (number)
-            (= (% number 2) 1))
-     map (lambda (function list)
-            (let ((result '()))
-                (dolist (i list)
-                  (set result (cons result (function i))))
-                result))
-
-     filter (lambda (predicate list)
-              (let ((result '()))
-                (dolist (i list)
-                  (when (predicate i)
-                    (set result (cons result i))))
-                result))
-
-     set-nth (macro
-              (list index value)
-              (eval
-               `(set ,list (cons
-                            (slice ,list 0 ,index)
-                            ,value
-                            (slice ,list ,(+ index 1))))))
-
-     defun (macro
+(let defun (macro
             (name arguments :rest body)
             (eval
              `(let ,name (lambda ,arguments
@@ -408,29 +419,79 @@ pub fn load(ast: &mut Ast) {
      defvar (macro
              (name value)
              (eval
-              `(let ,name ,value)))
+              `(let ,name ,value))))
 
-     any (lambda (value list)
-           (let ((result false))
-             (dolist (i list)
-               (when (= i value)
-                 (set result true)))
-             result))
+(defun even? (number)
+  (= (% number 2) 0))
 
-     ns (macro
-         (name :rest bindings)
-         (eval `(let ,name '()))
-         (dolist (binding bindings)
-           (set-nth binding 1
-                    (string->symbol
-                     (concat name \"/\" (car (cdr binding)))))
-           (eval `(let ,name (cons ,name (nth 1 binding))))
-           (eval binding)))
+(defun odd? (number)
+  (= (% number 2) 1))
 
-     use (macro
-          (namespace)
-          (dolist (symbol (eval namespace))
-            (eval
-             `(let ,(string->symbol (slice (symbol->string symbol) (+ (length namespace) 1))) ,symbol)))))
+(defun map (function list)
+  (let ((result '()))
+    (dolist (i list)
+      (set result (cons result (function i))))
+    result))
+
+(defun filter (predicate list)
+  (let ((result '()))
+    (dolist (i list)
+      (when (predicate i)
+        (set result (cons result i))))
+    result))
+
+(defmacro set-nth (list index value)
+  (let ((result `(cons
+                  (slice ,list 0 ,index)
+                  ,value
+                  (slice ,list ,(+ index 1)))))
+    (if (symbol? list)
+        (eval
+         `(set ,list ,result))
+      (eval result))))
+
+(defmacro ns (name :rest bindings)
+  (eval `(let ,name '()))
+  (dolist (binding bindings)
+    (set-nth binding 1
+             (string->symbol
+              (concat name \"/\" (car (cdr binding)))))
+    (eval `(let ,name (cons ,name (nth 1 binding))))
+    (eval binding)))
+
+(defmacro use (namespace)
+  (dolist (symbol (eval namespace))
+    (eval
+     `(let ,(string->symbol
+             (slice
+              (symbol->string symbol) (+ (length namespace) 1)))
+        ,symbol))))
+
+(defun zipwith (function a b)
+  (let ((result '()))
+    (while (and a b)
+      (set result (cons result (function (car a) (car b)))
+           a (cdr a)
+           b (cdr b)))
+    result))
+
+(defun zip (a b)
+  (let ((result '()))
+    (while (and a b)
+      (set result (cons result `((,(car a) ,(car b))))
+           a (cdr a)
+           b (cdr b)))
+    result))
+
+(defun empty? (sequence)
+  (= (length sequence) 0))
+
+(defmacro loop (:rest body)
+  (eval
+   `(while true
+      ,@body)))
+
+(defun load (path)
+  (eval (open path)))
 ".to_string())).expect("100% rust bug not mine");
 }
