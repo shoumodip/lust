@@ -335,7 +335,12 @@ impl Ast {
             env.insert(parameters[parameters_length - 1].clone(), Value::List(variadic));
         }
 
-        self.push_scope(Scope::from(env));
+        if is_macro {
+            self.last_scope().push(env);
+        } else {
+            self.push_scope(Scope::from(env));
+        }
+
         self.calls.push(name);
 
         let result = self.eval_do(&body);
@@ -344,7 +349,12 @@ impl Ast {
             self.calls.pop();
         }
 
-        self.pop_scope();
+        if is_macro {
+            self.last_scope().pop();
+        } else {
+            self.pop_scope();
+        }
+
         result
     }
 
@@ -589,8 +599,8 @@ impl Ast {
                 let mut result = vec![];
 
                 for value in list {
-                    if let List(list) = value.clone() {
-                        match list[0].clone() {
+                    match value.clone() {
+                        List(list) if list.len() > 0 => match list[0].clone() {
                             Symbol(s) if s == "unquote" => match self.eval(list[1].clone()) {
                                 Ok(value) => result.push(value),
                                 error => return error
@@ -611,9 +621,8 @@ impl Ast {
                                 Ok(value) => result.push(value),
                                 error => return error
                             }
-                        }
-                    } else {
-                        result.push(value);
+                        },
+                        value => result.push(value)
                     }
                 }
 
@@ -703,8 +712,12 @@ impl Ast {
                     eprintln!("error: {}", message);
 
                     if self.calls.len() > 0 {
-                        for call in self.calls.iter().rev() {
-                            eprintln!("In {}()", call);
+                        let mut i = self.calls.len();
+
+                        while i > 0 {
+                            i -= 1;
+                            if i > 0 && self.calls[i] == self.calls[i - 1] { continue; }
+                            eprintln!("In {}()", self.calls[i]);
                         }
                     }
 

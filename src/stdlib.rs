@@ -229,7 +229,7 @@ fn slice(arguments: Vec<Value>) -> Result {
 fn length(arguments: Vec<Value>) -> Result {
     use Value::*;
     match &arguments[0] {
-        String(s) => Ok(Number(s.len() as f64)),
+        String(s) | Symbol(s) => Ok(Number(s.len() as f64)),
         List(l) => Ok(Number(l.len() as f64)),
         _ => Ok(Nil)
     }
@@ -245,30 +245,75 @@ fn concat(arguments: Vec<Value>) -> Result {
     Ok(Value::String(result))
 }
 
+fn string2symbol(arguments: Vec<Value>) -> Result {
+    use Value::*;
+
+    if arguments.len() == 1 {
+        match &arguments[0] {
+            String(s) => if s.chars().any(|c| matches!(c, ' ' | '(' | ')')) {
+                Err(format!("invalid symbol '{}'", s))
+            } else {
+                Ok(Symbol(s.clone()))  
+            },
+            invalid => Err(format!("invalid string '{}'", invalid))
+        }
+    } else {
+        Err(format!("function 'string->symbol' takes 1 parameter(s), found {} instead",
+                    arguments.len()))
+    }
+}
+
+fn symbol2string(arguments: Vec<Value>) -> Result {
+    use Value::*;
+
+    if arguments.len() == 1 {
+        match &arguments[0] {
+            Symbol(s) => Ok(String(s.clone())),
+            invalid => Err(format!("invalid symbol '{}'", invalid))
+        }
+    } else {
+        Err(format!("function 'symbol->string' takes 1 parameter(s), found {} instead",
+                    arguments.len()))
+    }
+}
+
 fn range(arguments: Vec<Value>) -> Result {
     use Value::*;
 
-    let mut low = Number(0.0);
-    let high;
+    let mut a = Number(0.0);
+    let mut step = Number(1.0);
+    let b;
 
     match arguments.len() {
         0 => return Err("atleast upper limit must be provided to function 'range'".to_string()),
-        1 => high = arguments[0].clone(),
-        2 => {
-            low = arguments[0].clone();
-            high = arguments[1].clone();
+        1 => b = arguments[0].clone(),
+        2 | 3 => {
+            a = arguments[0].clone();
+            b = arguments[1].clone();
+
+            if arguments.len() == 3 {
+                step = arguments[2].clone();
+            }
         }
         n => return Err(format!("function 'range' takes 1 or 2 parameters, found '{}' instead", n))
     }
 
-    match (&low, &high) {
-        (Number(low), Number(high)) => {
-            let result = (*low as i64..*high as i64).map(|n| Number(n as f64)).collect();
-            Ok(List(result))
+    match (&a, &b, &step) {
+        (Number(a), Number(b), Number(step)) => {
+            let mut list = vec![];
+            let mut a = *a;
+
+            while (step > &0.0 && a < *b) || (step < &0.0 && a > *b) {
+                list.push(Number(a));
+                a += step;
+            }
+
+            Ok(List(list))
         }
-        _ => Err(format!("invalid limits '{}' and '{}' provided to function 'range'",
-                         low,
-                         high))
+        (Number(_), Number(_), invalid) =>
+            Err(format!("invalid step '{}' provided to function 'range'", invalid)),
+        (Number(_), invalid, _) | (invalid, _, _) =>
+            Err(format!("invalid limit '{}' provided to function 'range'", invalid)),
     }
 }
 
@@ -300,6 +345,9 @@ pub fn load(ast: &mut Ast) {
     ast.define("number?", Native(bool_unary!("number?", |v| if let Number(_) = v {true} else {false})));
     ast.define("bool?", Native(bool_unary!("bool?", |v| if let Boolean(_) = v {true} else {false})));
     ast.define("list?", Native(bool_unary!("list?", |v| if let List(_) = v {true} else {false})));
+
+    ast.define("string->symbol", Native(string2symbol));
+    ast.define("symbol->string", Native(symbol2string));
     
     // Arithmetic conditions
     ast.define("<", Native(arith_condition!(|a, b| a < b)));
@@ -320,37 +368,69 @@ pub fn load(ast: &mut Ast) {
     ast.define("range", Native(range));
 
     ast.run(parser::tokenize("
-(let even
-  (lambda (number)
-    (= (% number 2) 0)))
+(let even (lambda (number)
+            (= (% number 2) 0))
+     even (lambda (number)
+            (= (% number 2) 1))
+     map (lambda (function list)
+            (let ((result '()))
+                (dolist (i list)
+                  (set result (cons result (function i))))
+                result))
 
-(let even
-  (lambda (number)
-    (= (% number 2) 1)))
+     filter (lambda (predicate list)
+              (let ((result '()))
+                (dolist (i list)
+                  (when (predicate i)
+                    (set result (cons result i))))
+                result))
 
-(let map
-  (lambda (function list)
-    (let ((result '()))
-        (dolist (i list)
-          (set result (cons result (function i))))
-        result)))
+     set-nth (macro
+              (list index value)
+              (eval
+               `(set ,list (cons
+                            (slice ,list 0 ,index)
+                            ,value
+                            (slice ,list ,(+ index 1))))))
 
-(let filter
-  (lambda (predicate list)
-    (let ((result '()))
-      (dolist (i list)
-        (when (predicate i)
-          (set result (cons result i))))
-      result)))
+     defun (macro
+            (name arguments :rest body)
+            (eval
+             `(let ,name (lambda ,arguments
+                         ,@body))))
 
-(let set-nth
-  (macro
-     (list index value)
-     (eval
-      `(set ,list (cons
-                   (slice ,list 0 ,index)
-                   ,value
-                   (slice ,list ,(+ index 1)))))))
+     defmacro (macro
+               (name arguments :rest body)
+               (eval
+                `(let ,name (macro ,arguments
+                            ,@body))))
 
+     defvar (macro
+             (name value)
+             (eval
+              `(let ,name ,value)))
+
+     any (lambda (value list)
+           (let ((result false))
+             (dolist (i list)
+               (when (= i value)
+                 (set result true)))
+             result))
+
+     ns (macro
+         (name :rest bindings)
+         (eval `(let ,name '()))
+         (dolist (binding bindings)
+           (set-nth binding 1
+                    (string->symbol
+                     (concat name \"/\" (car (cdr binding)))))
+           (eval `(let ,name (cons ,name (nth 1 binding))))
+           (eval binding)))
+
+     use (macro
+          (namespace)
+          (dolist (symbol (eval namespace))
+            (eval
+             `(let ,(string->symbol (slice (symbol->string symbol) (+ (length namespace) 1))) ,symbol)))))
 ".to_string())).expect("100% rust bug not mine");
 }
