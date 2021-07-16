@@ -332,7 +332,7 @@ If statements.
 #+end_src
 
 An example here. Let's say the function ~print~ prints its arguments
-to standard output, while the function ~even~ checks if something is
+to standard output, while the function ~even?~ checks if something is
 even or odd.
 
 #+begin_src lisp
