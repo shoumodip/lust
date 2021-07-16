@@ -552,6 +552,23 @@ Checks if ~VALUE~ is a list.
 (list? '(- 2)) ; => true
 #+end_src
 
+** ~(string->symbol STRING)~
+Convert ~STRING~ to a possible symbol. If the string contains
+whitespaces or parenthesis, it will throw an error.
+
+#+begin_src lisp
+(string->symbol "foo")      ; => foo
+(string->symbol "()")       ; => error: invalid symbol '()'
+(string->symbol "foo bar")  ; => error: invalid symbol 'foo bar'
+#+end_src
+
+** ~(symbol->string SYMBOL)~
+Convert ~SYMBOl~ to a string.
+
+#+begin_src lisp
+(symbol->string 'foo) ; => "foo"
+#+end_src
+
 * Arithmetic conditions
 ** ~(< VALUE ...)~
 Checks if the values are less than each other sequentially.
