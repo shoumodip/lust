@@ -786,6 +786,21 @@ Here's an example.
 (half 5)        ; => 2.5
 #+end_src
 
+** ~(loop [BODY])~
+Infinite loop. Basically like ~(while true BODY)~.
+
+#+begin_src lisp
+$ lust
+> (loop (print "Infinite!"))
+Infinite!
+Infinite!
+Infinite!
+Infinite!
+Infinite!
+Infinite!
+...
+#+end_src
+
 ** ~(+= NUMBER VALUE)~
 Adds ~VALUE~ to ~NUMBER~.
 
