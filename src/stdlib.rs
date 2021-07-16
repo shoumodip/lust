@@ -269,6 +269,16 @@ fn length(arguments: Vec<Value>) -> Result {
     }
 }
 
+fn reverse(arguments: Vec<Value>) -> Result {
+    use Value::*;
+    match &arguments[0] {
+        String(s) => Ok(String(s.chars().rev().collect())),
+        Symbol(s) => Ok(Symbol(s.chars().rev().collect())),
+        List(l) => Ok(List(l.clone().into_iter().rev().collect())),
+        _ => Ok(Nil)
+    }
+}
+
 fn concat(arguments: Vec<Value>) -> Result {
     let mut result = String::new();
 
@@ -401,6 +411,7 @@ pub fn load(ast: &mut Ast) {
     // QoL functions
     ast.define("length", Native(length));
     ast.define("concat", Native(concat));
+    ast.define("reverse", Native(reverse));
     ast.define("range", Native(range));
 
     ast.run(parser::tokenize("
@@ -439,6 +450,16 @@ pub fn load(ast: &mut Ast) {
       (when (predicate i)
         (set result (cons result i))))
     result))
+
+(defun foldl (function value sequence)
+  (dolist (i sequence)
+    (set value (function value i)))
+  value)
+
+(defun foldr (function value sequence)
+  (dolist (i (reverse sequence))
+    (set value (function value i)))
+  value)
 
 (defmacro set-nth (list index value)
   (let ((result `(cons

@@ -336,7 +336,17 @@ Returns the number of items in ~SEQUENCE~.
 
 #+begin_src lisp
 (length "Hello, world") ; => 12
+(length 'foobar)        ; => 6
 (length '(0 1 2 3 4))   ; 5
+#+end_src
+
+** ~(reverse SEQUENCE)~
+Reverses ~SEQUENCE~.
+
+#+begin_src lisp
+(reverse "Hello, world") ; => "dlrow ,olleH"
+(reverse 'foobar)        ; => raboof
+(reverse '(0 1 2 3 4))   ; => (4 3 2 1 0)
 #+end_src
 
 ** ~(concat VALUE ...)~
@@ -717,20 +727,36 @@ from the items for which ~(PREDICATE item)~ returned a truthy value.
 (filter odd '(1 2 3 4))  ; => (1 3)
 #+end_src
 
+** ~(foldl INIT FUNCTION LIST)~
+Left fold on ~LIST~ using ~FUNCTION~ with initial value ~INIT~.
+
+#+begin_src lisp
+(foldl + 0 '(1 2 3 4))    ; => 10
+(foldl cons 0 '(1 2 3 4)) ; => (0 1 2 3 4)
+#+end_src
+
+** ~(foldr INIT FUNCTION LIST)~
+Right fold on ~LIST~ using ~FUNCTION~ with initial value ~INIT~.
+
+#+begin_src lisp
+(foldr - 10 '(1 2 3))     ; => 4
+(foldr cons 0 '(1 2 3 4)) ; => (0 4 3 2 1)
+#+end_src
+
 ** ~(zipwith FUNCTION A B)~
 Zip the elements of ~A~ and ~B~ together using ~FUNCTION~.
 
 #+begin_src lisp
-(zip * '(1 2 3) '(1 2))   ; => 1 4
-(zip + '(1 2 3) '(1 3 4)) ; => 2 5 7
+(zipwith * '(1 2 3) '(1 2))   ; => 1 4
+(zipwith + '(1 2 3) '(1 3 4)) ; => 2 5 7
 #+end_src
 
 ** ~(zip FUNCTION A B)~
 Zip the elements of ~A~ and ~B~ together.
 
 #+begin_src lisp
-(zip * '(1 2 3) '(1 2))   ; => 1 4
-(zip + '(1 2 3) '(1 3 4)) ; => 2 5 7
+(zip '(1 2 3) '(1 2))   ; => ((1 1) (2 2))
+(zip '(1 2 3) '(1 3 4)) ; => ((1 1) (2 3) (3 4))
 #+end_src
 
 ** ~(set-nth LIST N VALUE)~
