@@ -4,8 +4,8 @@ use std::collections::HashMap;
 
 use crate::parser;
 
-pub type Env = HashMap<String, Value>;
-pub type Function = fn(Vec<Value>) -> Result;
+type Env = HashMap<String, Value>;
+type Function = fn(Vec<Value>) -> Result;
 pub type Result = result::Result<Value, String>;
 
 #[derive(PartialEq, Clone)]
@@ -40,7 +40,7 @@ pub fn is_nil(value: &Value) -> bool {
     }
 }
 
-pub fn eval_lambda_form(arguments: &[Value], is_macro: bool) -> Result {
+fn eval_lambda_form(arguments: &[Value], is_macro: bool) -> Result {
     use Value::*;
 
     if arguments.len() == 0 {
@@ -112,39 +112,39 @@ impl fmt::Display for Value {
     }
 }
 
-pub struct Scope {
+struct Scope {
     list: Vec<Env>
 }
 
 impl Scope {
-    pub fn new() -> Self {
+    fn new() -> Self {
         Self {
             list: vec![Env::new()]
         }
     }
 
-    pub fn from(env: Env) -> Self {
+    fn from(env: Env) -> Self {
         Self {
             list: vec![env]
         }
     }
 
-    pub fn first(&self) -> &Env {
+    fn first(&self) -> &Env {
         &self.list[0]
     }
 
-    pub fn first_mut(&mut self) -> &mut Env {
+    fn first_mut(&mut self) -> &mut Env {
         &mut self.list[0]
     }
 
-    pub fn define(&mut self, symbol: String, value: Value) {
+    fn define(&mut self, symbol: String, value: Value) {
         self.list
             .first_mut()
             .expect("100% rust bug not mine")
             .insert(symbol, value);
     }
 
-    pub fn lookup(&self, symbol: &String) -> Option<Value> {
+    fn lookup(&self, symbol: &String) -> Option<Value> {
         for env in self.list.iter().rev() {
             if let Some(value) = env.get(symbol) {
                 return Some(value.clone());
@@ -154,7 +154,7 @@ impl Scope {
         None
     }
 
-    pub fn lookup_mut(&mut self, symbol: &String) -> Option<&mut Value> {
+    fn lookup_mut(&mut self, symbol: &String) -> Option<&mut Value> {
         for env in self.list.iter_mut().rev() {
             if let Some(value) = env.get_mut(symbol) {
                 return Some(value);
@@ -164,18 +164,18 @@ impl Scope {
         None
     }
 
-    pub fn push(&mut self, env: Env) {
+    fn push(&mut self, env: Env) {
         self.list.push(env);
     }
 
-    pub fn pop(&mut self) {
+    fn pop(&mut self) {
         self.list.pop();
     }
 }
 
 pub struct Ast {
-    pub calls: Vec<String>,
-    pub scopes: Vec<Scope>,
+    calls: Vec<String>,
+    scopes: Vec<Scope>,
 }
 
 impl Ast {
@@ -193,20 +193,20 @@ impl Ast {
             .define(symbol.to_string(), value);
     }
 
-    pub fn last_scope(&mut self) -> &mut Scope {
+    fn last_scope(&mut self) -> &mut Scope {
         self.scopes.last_mut()
             .expect("100% rust bug not mine")
     }
 
-    pub fn push_scope(&mut self, scope: Scope) {
+    fn push_scope(&mut self, scope: Scope) {
         self.scopes.push(scope);
     }
 
-    pub fn pop_scope(&mut self) {
+    fn pop_scope(&mut self) {
         self.scopes.pop();
     }
 
-    pub fn lookup(&self, symbol: &str) -> Result {
+    fn lookup(&self, symbol: &str) -> Result {
         let symbol = &symbol.to_string();
 
         if self.calls.len() == 0 {
@@ -230,7 +230,7 @@ impl Ast {
         Err(format!("undefined symbol '{}'", symbol))
     }
 
-    pub fn scope_set(&mut self, symbol: String, value: Value) -> Result {
+    fn scope_set(&mut self, symbol: String, value: Value) -> Result {
         use Value::*;
         if self.calls.len() == 0 {
             for scope in self.scopes.iter_mut().rev() {
@@ -254,7 +254,7 @@ impl Ast {
         Err(format!("undefined symbol '{}' in set", symbol))
     }
 
-    pub fn eval_native(&mut self,
+    fn eval_native(&mut self,
                        name: String,
                        function: Function,
                        arguments: &[Value]) -> Result
@@ -275,7 +275,7 @@ impl Ast {
         result
     }
 
-    pub fn eval_lambda(&mut self,
+    fn eval_lambda(&mut self,
                        name: String,
                        parameters: Vec<String>,
                        arguments: &[Value],
@@ -359,7 +359,7 @@ impl Ast {
         result
     }
 
-    pub fn eval_set(&mut self, arguments: &[Value]) -> Result {
+    fn eval_set(&mut self, arguments: &[Value]) -> Result {
         use Value::*;
 
         if arguments.len() < 1 {
@@ -395,7 +395,7 @@ impl Ast {
         }
     }
 
-    pub fn eval_let(&mut self, arguments: &[Value]) -> Result {
+    fn eval_let(&mut self, arguments: &[Value]) -> Result {
         use Value::*;
 
         if arguments.len() == 0 {
@@ -452,7 +452,7 @@ impl Ast {
         }
     }
 
-    pub fn eval_do(&mut self, body: &[Value]) -> Result {
+    fn eval_do(&mut self, body: &[Value]) -> Result {
         use Value::*;
 
         let mut result = Nil;
@@ -466,7 +466,7 @@ impl Ast {
         Ok(result)
     }
 
-    pub fn eval_if(&mut self, arguments: &[Value]) -> Result {
+    fn eval_if(&mut self, arguments: &[Value]) -> Result {
         use Value::*;
 
         if arguments.len() == 0 {
@@ -487,7 +487,7 @@ impl Ast {
         }
     }
 
-    pub fn eval_do_condition(&mut self, arguments: &[Value], condition: bool) -> Result {
+    fn eval_do_condition(&mut self, arguments: &[Value], condition: bool) -> Result {
         use Value::*;
 
         if arguments.len() == 0 {
@@ -504,7 +504,7 @@ impl Ast {
         }
     }
 
-    pub fn eval_while(&mut self, arguments: &[Value]) -> Result {
+    fn eval_while(&mut self, arguments: &[Value]) -> Result {
         use Value::*;
 
         if arguments.len() < 1 {
@@ -527,7 +527,7 @@ impl Ast {
         }
     }
 
-    pub fn eval_dolist(&mut self, arguments: &[Value]) -> Result {
+    fn eval_dolist(&mut self, arguments: &[Value]) -> Result {
         use Value::*;
 
         if arguments.len() < 1 {
@@ -573,7 +573,7 @@ impl Ast {
         }
     }
 
-    pub fn eval_eval(&mut self, arguments: &[Value]) -> Result {
+    fn eval_eval(&mut self, arguments: &[Value]) -> Result {
         use Value::*;
 
         if arguments.len() < 1 {
@@ -595,7 +595,7 @@ impl Ast {
         }
     }
 
-    pub fn eval_quasiquote(&mut self, value: Value) -> Result {
+    fn eval_quasiquote(&mut self, value: Value) -> Result {
         use Value::*;
 
         match value {
@@ -637,7 +637,7 @@ impl Ast {
     }
 
 
-    pub fn eval_call(&mut self, name: String, arguments: &[Value]) -> Result {
+    fn eval_call(&mut self, name: String, arguments: &[Value]) -> Result {
         use Value::*;
 
         match self.lookup(&name) {
@@ -670,7 +670,7 @@ impl Ast {
         }
     }
 
-    pub fn eval_list(&mut self, list: Vec<Value>) -> Result {
+    fn eval_list(&mut self, list: Vec<Value>) -> Result {
         use Value::*;
         match list.len() {
             0 => Err("cannot evaluate empty expression".to_string()),
@@ -697,7 +697,7 @@ impl Ast {
         }
     }
 
-    pub fn eval(&mut self, expression: Value) -> Result {
+    fn eval(&mut self, expression: Value) -> Result {
         use Value::*;
         match expression {
             Symbol(s) => self.lookup(&s),

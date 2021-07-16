@@ -1,7 +1,7 @@
 use std::process;
 use crate::ast::{Value, Result};
 
-pub struct Parser {
+struct Parser {
     length: usize,
     source: Vec<char>,
     position: usize,
@@ -9,7 +9,7 @@ pub struct Parser {
 }
 
 impl Parser {
-    pub fn new(source: String) -> Self {
+    fn new(source: String) -> Self {
         Self {
             length: source.len(),
             source: source.chars().collect(),
@@ -18,11 +18,11 @@ impl Parser {
         }
     }
 
-    pub fn is_at_end(&self) -> bool {
+    fn is_at_end(&self) -> bool {
         self.position >= self.length
     }
 
-    pub fn get_char(&self) -> Option<char> {
+    fn get_char(&self) -> Option<char> {
         if self.is_at_end() {
             None
         } else {
@@ -30,7 +30,7 @@ impl Parser {
         }
     }
 
-    pub fn consume(&mut self, character: char) -> bool {
+    fn consume(&mut self, character: char) -> bool {
         if !self.is_at_end() && self.source[self.position + 1] == character {
             self.advance();
             true
@@ -39,7 +39,7 @@ impl Parser {
         }
     }
 
-    pub fn advance(&mut self) {
+    fn advance(&mut self) {
         if !self.is_at_end() {
             if self.get_char() == Some('\n') {
                 self.line += 1;
@@ -48,7 +48,7 @@ impl Parser {
         }
     }
 
-    pub fn advance_till(&mut self, targets: &[char], consume: &[char]) {
+    fn advance_till(&mut self, targets: &[char], consume: &[char]) {
         while let Some(character) = self.get_char() {
             for target in targets {
                 if character == *target {
@@ -67,7 +67,7 @@ impl Parser {
         }
     }
 
-    pub fn parse_atom(&mut self, atom: &str) -> Value {
+    fn parse_atom(&mut self, atom: &str) -> Value {
         match atom {
             "true" => Value::Boolean(true),
             "false" => Value::Boolean(false),
@@ -79,7 +79,7 @@ impl Parser {
         }
     }
 
-    pub fn read_atom(&mut self) -> Result {
+    fn read_atom(&mut self) -> Result {
         let position = self.position;
 
         self.advance_till(&['(', ')', ';', ' ', '\n'], &[]);
@@ -94,7 +94,7 @@ impl Parser {
         Ok(atom)
     }
 
-    pub fn read_string(&mut self) -> Result {
+    fn read_string(&mut self) -> Result {
         self.advance();
         let position = self.position;
 
@@ -113,7 +113,7 @@ impl Parser {
         }
     }
 
-    pub fn read_list(&mut self) -> Result {
+    fn read_list(&mut self) -> Result {
         let mut list = vec![];
         self.advance();
 
@@ -133,7 +133,7 @@ impl Parser {
         }
     }
 
-    pub fn skip_whitespace(&mut self) {
+    fn skip_whitespace(&mut self) {
         while let Some(character) = self.get_char() {
             match character {
                 '\n' | '\t' | '\r' | ' ' => self.advance(),
@@ -143,7 +143,7 @@ impl Parser {
         }
     }
 
-    pub fn read_quote(&mut self, kind: &str) -> Result {
+    fn read_quote(&mut self, kind: &str) -> Result {
         use Value::*;
 
         self.advance();
@@ -153,7 +153,7 @@ impl Parser {
         }
     }
 
-    pub fn read_token(&mut self) -> Result {
+    fn read_token(&mut self) -> Result {
         self.skip_whitespace();
 
         if let Some(character) = self.get_char() {
