@@ -351,6 +351,43 @@ fn boolean2string(arguments: Vec<Value>) -> Result {
     }
 }
 
+fn lambda2list(arguments: Vec<Value>) -> Result {
+    use Value::*;
+    if arguments.len() == 1 {
+        match &arguments[0] {
+            Lambda(is_macro, is_variadic, parameters, body) => {
+                let form_name = if *is_macro {"macro"} else {"lambda"};
+                let mut result = vec![Symbol(form_name.to_string())];
+                let mut parameters = parameters
+                    .iter()
+                    .map(|p| Symbol(p.clone()))
+                    .collect::<Vec<Value>>();
+
+                if *is_variadic {
+                    let parameters_length = parameters.len();
+
+                    if parameters_length == 0 {
+                        return Err(format!("unnamed variadic parameter in {}", form_name));
+                    }
+
+                    let variadic_parameter = parameters[parameters_length - 1].clone();
+                    parameters[parameters_length - 1] = Symbol(":rest".to_string());
+                    parameters.push(variadic_parameter);
+                }
+
+                result.push(List(parameters));
+                result.extend(body.clone());
+
+                Ok(List(result))
+            },
+            invalid => Err(format!("invalid lambda '{}'", invalid))
+        }
+    } else {
+        Err(format!("function 'lambda->list' takes 1 parameter(s), found {} instead",
+                    arguments.len()))
+    }
+}
+
 fn range(arguments: Vec<Value>) -> Result {
     use Value::*;
 
@@ -431,6 +468,7 @@ pub fn load(ast: &mut Ast) {
     ast.define("symbol->string", Native(symbol2string));
     ast.define("boolean->string", Native(boolean2string));
     ast.define("string->boolean", Native(string2boolean));
+    ast.define("lambda->list", Native(lambda2list));
     
     // Arithmetic conditions
     ast.define("<", Native(arith_condition!(|a, b| a < b)));
