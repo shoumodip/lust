@@ -591,6 +591,87 @@ Convert ~SYMBOl~ to a string.
 (symbol->string 'foo) ; => "foo"
 #+end_src
 
+** ~(string->boolean STRING)~
+Convert ~STRING~ to a possible boolean.
+
+#+begin_src lisp
+(string->boolean "true")  ; => true
+(string->boolean "false") ; => false
+(string->boolean "nil")   ; => error: invalid boolean 'nil'
+#+end_src
+
+** ~(boolean->string BOOLEAN)~
+Convert ~BOOLEAN~ to a string.
+
+#+begin_src lisp
+(boolean->string true)  ; => "true"
+(boolean->string false) ; => "false"
+#+end_src
+
+** ~(function->list FUNCTION)~
+Convert a lambda or macro to a list. The possibilities with this are
+/literally endless/, considering you can straight up modify the source
+of a function definition. Just convert some lambda or macro to a list,
+and do *whatever* you want with the list (evaluate a changed version,
+maybe?).
+
+#+begin_src lisp
+(defun double (n)
+  (print (concat "Doubling " n))
+  (* n 2))
+
+(function->list double) ; => (lambda (n) (print (concat "Doubling " n) (* n 2)))
+
+(defmacro echo (s)
+  (print s)
+  (print s))
+
+(function->list echo)   ; => (macro (s) (print s) (print s)))
+#+end_src
+
+Anonymous lambdas and macros can also be used.
+
+#+begin_src lisp
+(function->list (lambda (n)
+                  (print (concat "Doubling " n))
+                  (* n 2)))  ; => (lambda (n) (print (concat "Doubling " n) (* n 2)))
+
+(function->list (macro
+                 (s)
+                 (print s)
+                 (print s))) ; => (macro (s) (print s) (print s)))
+#+end_src
+
+Variadics are also handled smoothly.
+
+#+begin_src lisp
+(defun add (:rest numbers)
+  (let ((result 0))
+    (dolist (i numbers)
+      (+= result i))
+    result))
+
+(defun sub (first :rest numbers)
+  (let ((result first))
+    (dolist (i numbers)
+      (-= result i))
+    result))
+
+(function->list add)  ; => (lambda (:rest numbres) (let ((result 0)) (dolist (i numbers) (+= result i)) result))
+(function->list sub)  ; => (lambda (first :rest numbres) (let ((result first)) (dolist (i numbers) (+= result i)) result))
+
+(defmacro echo (:rest list)
+  (dolist (i list)
+    (print i)))
+
+(defmacro echo (first :rest list)
+  (print first)
+  (dolist (i list)
+    (print i)))
+
+(function->list echo) ; => (macro (first :rest list) (print first) (dolist (i list) (print i)))
+#+end_src
+
 * Arithmetic conditions
 ** ~(< VALUE ...)~
 Checks if the values are less than each other sequentially.
