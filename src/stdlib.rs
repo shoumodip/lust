@@ -351,7 +351,7 @@ fn boolean2string(arguments: Vec<Value>) -> Result {
     }
 }
 
-fn lambda2list(arguments: Vec<Value>) -> Result {
+fn function2list(arguments: Vec<Value>) -> Result {
     use Value::*;
     if arguments.len() == 1 {
         match &arguments[0] {
@@ -468,7 +468,7 @@ pub fn load(ast: &mut Ast) {
     ast.define("symbol->string", Native(symbol2string));
     ast.define("boolean->string", Native(boolean2string));
     ast.define("string->boolean", Native(string2boolean));
-    ast.define("lambda->list", Native(lambda2list));
+    ast.define("function->list", Native(function2list));
     
     // Arithmetic conditions
     ast.define("<", Native(arith_condition!(|a, b| a < b)));
