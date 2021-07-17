@@ -321,6 +321,36 @@ fn symbol2string(arguments: Vec<Value>) -> Result {
     }
 }
 
+fn string2boolean(arguments: Vec<Value>) -> Result {
+    use Value::*;
+
+    if arguments.len() == 1 {
+        match &arguments[0] {
+            String(b) if b == "true" => Ok(Boolean(true)),
+            String(b) if b == "false" => Ok(Boolean(false)),
+            String(invalid) => Err(format!("invalid boolean '{}'", invalid)),
+            invalid => Err(format!("invalid invalid '{}'", invalid))
+        }
+    } else {
+        Err(format!("function 'string->boolean' takes 1 parameter(s), found {} instead",
+                    arguments.len()))
+    }
+}
+
+fn boolean2string(arguments: Vec<Value>) -> Result {
+    use Value::*;
+
+    if arguments.len() == 1 {
+        match &arguments[0] {
+            Boolean(b) => Ok(String(b.to_string())),
+            invalid => Err(format!("invalid boolean '{}'", invalid))
+        }
+    } else {
+        Err(format!("function 'boolean->string' takes 1 parameter(s), found {} instead",
+                    arguments.len()))
+    }
+}
+
 fn range(arguments: Vec<Value>) -> Result {
     use Value::*;
 
@@ -399,6 +429,8 @@ pub fn load(ast: &mut Ast) {
 
     ast.define("string->symbol", Native(string2symbol));
     ast.define("symbol->string", Native(symbol2string));
+    ast.define("boolean->string", Native(boolean2string));
+    ast.define("string->boolean", Native(string2boolean));
     
     // Arithmetic conditions
     ast.define("<", Native(arith_condition!(|a, b| a < b)));
