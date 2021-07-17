@@ -620,13 +620,13 @@ maybe?).
   (print (concat "Doubling " n))
   (* n 2))
 
-(function->list double) ; => (lambda (n) (print (concat "Doubling " n) (* n 2)))
+(function->list double) ; => (lambda (n) (print (concat "Doubling " n)) (* n 2))
 
 (defmacro echo (s)
   (print s)
   (print s))
 
-(function->list echo)   ; => (macro (s) (print s) (print s)))
+(function->list echo)   ; => (macro (s) (print s) (print s))
 #+end_src
 
 Anonymous lambdas and macros can also be used.
@@ -634,12 +634,12 @@ Anonymous lambdas and macros can also be used.
 #+begin_src lisp
 (function->list (lambda (n)
                   (print (concat "Doubling " n))
-                  (* n 2)))  ; => (lambda (n) (print (concat "Doubling " n) (* n 2)))
+                  (* n 2)))  ; => (lambda (n) (print (concat "Doubling " n)) (* n 2))
 
 (function->list (macro
                  (s)
                  (print s)
-                 (print s))) ; => (macro (s) (print s) (print s)))
+                 (print s))) ; => (macro (s) (print s) (print s))
 #+end_src
 
 Variadics are also handled smoothly.
@@ -657,8 +657,8 @@ Variadics are also handled smoothly.
       (-= result i))
     result))
 
-(function->list add)  ; => (lambda (:rest numbres) (let ((result 0)) (dolist (i numbers) (+= result i)) result))
-(function->list sub)  ; => (lambda (first :rest numbres) (let ((result first)) (dolist (i numbers) (+= result i)) result))
+(function->list add)  ; => (lambda (:rest numbers) (let ((result 0)) (dolist (i numbers) (+= result i)) result))
+(function->list sub)  ; => (lambda (first :rest numbers) (let ((result first)) (dolist (i numbers) (+= result i)) result))
 
 (defmacro echo (:rest list)
   (dolist (i list)
