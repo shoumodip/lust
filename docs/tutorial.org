@@ -669,12 +669,11 @@ the language adapts to us, am I right? Let's implement foreach.
 (let foreach
   (macro
    (var list expr)
-   (eval
-    `(let ((,var nil)
-           (list ,list))
-       (set ,var (car list)
-            list (cdr list))
-       ,expr))))
+   `(let ((,var nil)
+          (list ,list))
+      (set ,var (car list)
+           list (cdr list))
+      ,expr)))
 #+end_src
 
 This makes use of some functions we don't know yet.
@@ -744,12 +743,11 @@ let's fix that.
 (let foreach
   (macro
    (var list :rest body)     ; Make the body variadic
-   (eval
-    `(let ((,var nil)
-           (list ,list))
-       (set ,var (car list)
-            list (cdr list))
-       ,body))))
+   `(let ((,var nil)
+          (list ,list))
+      (set ,var (car list)
+           list (cdr list))
+      ,body)))
 #+end_src
 
 Before explanations, let's run it.
@@ -810,12 +808,11 @@ So the *final* definition of the foreach macro:
 (let foreach
   (macro
    (var list :rest body)
-   (eval
-    `(let ((,var nil)
-           (list ,list))
-       (set ,var (car list)
-            list (cdr list))
-       ,@body))))            ; ,body -> ,@body
+   `(let ((,var nil)
+          (list ,list))
+      (set ,var (car list)
+           list (cdr list))
+      ,@body)))             ; ,body -> ,@body
 #+end_src
 
 Let's run it.

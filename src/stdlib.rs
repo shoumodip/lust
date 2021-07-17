@@ -417,20 +417,17 @@ pub fn load(ast: &mut Ast) {
     ast.run(parser::tokenize("
 (let defun (macro
             (name arguments :rest body)
-            (eval
-             `(let ,name (lambda ,arguments
-                         ,@body))))
+            `(let ,name (lambda ,arguments
+                          ,@body)))
 
      defmacro (macro
                (name arguments :rest body)
-               (eval
-                `(let ,name (macro ,arguments
-                            ,@body))))
+               `(let ,name (macro ,arguments
+                                  ,@body)))
 
      defvar (macro
              (name value)
-             (eval
-              `(let ,name ,value))))
+             `(let ,name ,value)))
 
 (defun even? (number)
   (= (% number 2) 0))
@@ -467,21 +464,20 @@ pub fn load(ast: &mut Ast) {
                   ,value
                   (slice ,list ,(+ index 1)))))
     (if (symbol? list)
-        (eval
-         `(set ,list ,result))
-      (eval result))))
+        `(set ,list ,result)
+      result)))
 
 (defmacro ns (name :rest bindings)
   (eval `(let ,name '()))
   (dolist (binding bindings)
     (set-nth binding 1
              (string->symbol
-              (concat name \"/\" (car (cdr binding)))))
+              (concat name \"/\" (nth 1 binding))))
     (eval `(let ,name (cons ,name (nth 1 binding))))
     (eval binding)))
 
 (defmacro use (namespace)
-  (dolist (symbol (eval namespace))
+  (dolist (symbol (eval 'namespace))
     (eval
      `(let ,(string->symbol
              (slice
@@ -508,9 +504,8 @@ pub fn load(ast: &mut Ast) {
   (= (length sequence) 0))
 
 (defmacro loop (:rest body)
-  (eval
-   `(while true
-      ,@body)))
+  `(while true
+     ,@body))
 
 (defun load (path)
   (eval (open path)))

@@ -336,24 +336,15 @@ impl Ast {
             env.insert(parameters[parameters_length - 1].clone(), Value::List(variadic));
         }
 
-        if is_macro {
-            self.last_scope().push(env);
-        } else {
-            self.push_scope(Scope::from(env));
-        }
-
+        self.push_scope(Scope::from(env));
         self.calls.push(name);
 
-        let result = self.eval_do(&body);
+        let mut result = self.eval_do(&body);
+        self.pop_scope();
 
-        if let Ok(_) = result {
+        if let Ok(value) = &result {
+            if is_macro { result = self.eval(value.clone()); }
             self.calls.pop();
-        }
-
-        if is_macro {
-            self.last_scope().pop();
-        } else {
-            self.pop_scope();
         }
 
         result
