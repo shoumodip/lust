@@ -325,7 +325,7 @@ fn range(arguments: Vec<Value>) -> Result {
     use Value::*;
 
     let mut a = Number(0.0);
-    let mut step = Number(1.0);
+    let mut step = Number(0.0);
     let b;
 
     match arguments.len() {
@@ -345,9 +345,14 @@ fn range(arguments: Vec<Value>) -> Result {
     match (&a, &b, &step) {
         (Number(a), Number(b), Number(step)) => {
             let mut list = vec![];
-            let mut a = *a;
+            let mut step = *step;
 
-            while (step > &0.0 && a < *b) || (step < &0.0 && a > *b) {
+            if step == 0.0 { step = if a > b { -1.0 } else { 1.0 }; }
+
+            let mut a = *a;
+            let b = *b;
+
+            while (step > 0.0 && a < b) || (step < 0.0 && a > b) {
                 list.push(Number(a));
                 a += step;
             }
