@@ -18,10 +18,14 @@ fn run_file(file_path: &str) {
     stdlib::load(&mut ast);
 
     let tokens = parser::tokenize(source);
-    match ast.run(tokens) {
-        Some(_) => {},
-        None => process::exit(1)
+
+    if let Some(tokens) = tokens {
+        if let Some(_) = ast.run(tokens) {
+            return;
+        }
     }
+
+    process::exit(1)
 }
 
 fn repl() {
@@ -40,11 +44,17 @@ fn repl() {
         match buffer.len() {
             0 => break,
             1 => continue,
-            _ => match ast.run(parser::tokenize(buffer)) {
-                Some(ast::Value::String(string)) => println!("\"{}\"", string),
-                Some(value) => println!("{}", value),
-                None => {}
-            },
+            _ => {
+                let tokens = parser::tokenize(buffer);
+
+                if let Some(tokens) = tokens {
+                    match ast.run(tokens) {
+                        Some(ast::Value::String(string)) => println!("\"{}\"", string),
+                        Some(value) => println!("{}", value),
+                        None => {}
+                    }
+                }
+            }
         }
     }
 

@@ -1,4 +1,3 @@
-use std::process;
 use crate::ast::{Value, Result};
 
 struct Parser {
@@ -178,7 +177,7 @@ impl Parser {
     }
 }
 
-pub fn tokenize(source: String) -> Vec<Value> {
+pub fn tokenize(source: String) -> Option<Vec<Value>> {
     let mut parser = Parser::new(source);
     let mut tokens = vec![];
 
@@ -189,10 +188,10 @@ pub fn tokenize(source: String) -> Vec<Value> {
             Ok(token) => tokens.push(token),
             Err(message) => {
                 eprintln!("[line {}] {}", line, message);
-                process::exit(1);
+                return None;
             }
         }
     }
 
-    tokens
+    Some(tokens)
 }
