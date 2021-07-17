@@ -233,7 +233,7 @@ fn slice(arguments: Vec<Value>) -> Result {
         let mut high;
 
         match &arguments[0] {
-            String(s) => high = s.len(),
+            String(s) | Symbol(s) => high = s.len(),
             List(l) => high = l.len(),
             invalid => return Err(format!("invalid sequence '{}'", invalid))
         }
@@ -253,7 +253,7 @@ fn slice(arguments: Vec<Value>) -> Result {
         }
 
         match &arguments[0] {
-            String(s) => Ok(String(s[low..high].to_string())),
+            String(s) | Symbol(s) => Ok(String(s[low..high].to_string())),
             List(l) => Ok(List(l[low..high].to_vec())),
             invalid => Err(format!("invalid sequence '{}'", invalid))
         }
@@ -485,8 +485,7 @@ pub fn load(ast: &mut Ast) {
   (dolist (symbol (eval 'namespace))
     (eval
      `(let ,(string->symbol
-             (slice
-              (symbol->string symbol) (+ (length namespace) 1)))
+             (slice symbol (+ (length namespace) 1)))
         ,symbol))))
 
 (defun zipwith (function a b)
