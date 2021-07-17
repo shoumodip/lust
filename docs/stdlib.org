@@ -357,13 +357,25 @@ Concat several values together into a single string.
 (length 42 " is the answer") ; => "42 is the answer"
 #+end_src
 
-** ~(range BOUND [BOUND])~
+** ~(range BOUND [BOUND] [STEP])~
 Generate a range of numbers, whose lower boundary defaults to ~0~. The
-upper boundary is exclusive.
+~STEP~ is the incrementer, which defaults to ~1~ or ~-1~ depending on
+the bounds provided.
 
 #+begin_src lisp
-(range 5)   ; => (0 1 2 3 4)
-(range 2 7) ; => (2 3 4 5 6)
+(range 5)      ; => (0 1 2 3 4)
+(range 2 7)    ; => (2 3 4 5 6)
+(range 7 2)    ; => (7 6 5 4 3)
+(range 2 7 2)  ; => (2 4 6)
+(range 7 2 -2) ; => (7 5 3)
+#+end_src
+
+A nice advantage of this function is that it can prevent infinite
+loops. Here's some examples.
+
+#+begin_src lisp
+(range 2 7 -2) ; => ()
+(range 7 2 2)  ; => ()
 #+end_src
 
 ** ~(print VALUE ...)~
