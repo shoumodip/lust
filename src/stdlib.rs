@@ -581,9 +581,9 @@ pub fn load(ast: &mut Ast) {
 (defmacro ns (name :rest bindings)
   (eval `(let ,name '()))
   (dolist (binding bindings)
-    (set-nth binding 1
-             (string->symbol
-              (concat name \"/\" (nth 1 binding))))
+    (set (binding 1)
+         (string->symbol
+          (concat name \"/\" (nth 1 binding))))
     (eval `(let ,name (cons ,name (nth 1 binding))))
     (eval binding)))
 
@@ -605,7 +605,7 @@ pub fn load(ast: &mut Ast) {
 (defun zip (a b)
   (let ((result '()))
     (while (and a b)
-      (set result (cons result `((,(car a) ,(car b))))
+      (set result (cons! 1 result `(,(car a) ,(car b)))
            a (cdr a)
            b (cdr b)))
     result))
