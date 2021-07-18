@@ -144,13 +144,21 @@ impl Scope {
             .insert(symbol, value);
     }
 
+    fn contains(&self, symbol: &String) -> bool {
+        for env in self.list.iter().rev() {
+            if env.contains_key(symbol) {
+                return true;
+            }
+        }
+        false
+    }
+
     fn lookup(&self, symbol: &String) -> Option<Value> {
         for env in self.list.iter().rev() {
             if let Some(value) = env.get(symbol) {
                 return Some(value.clone());
             }
         }
-
         None
     }
 
@@ -230,11 +238,11 @@ impl Ast {
         Err(format!("undefined symbol '{}'", symbol))
     }
 
-    fn scope_set(&mut self, symbol: String, value: Value) -> Result {
+    fn scope_set(&mut self, symbol: &String, value: Value) -> Result {
         use Value::*;
         if self.calls.len() == 0 {
             for scope in self.scopes.iter_mut().rev() {
-                if let Some(symbol) = scope.lookup_mut(&symbol) {
+                if let Some(symbol) = scope.lookup_mut(symbol) {
                     *symbol = value;
                     return Ok(Nil);
                 }
@@ -242,16 +250,40 @@ impl Ast {
         } else {
             let last = self.scopes.len() - 1;
 
-            if let Some(symbol) = self.scopes[last].lookup_mut(&symbol) {
+            if let Some(symbol) = self.scopes[last].lookup_mut(symbol) {
                 *symbol = value;
                 return Ok(Nil);
-            } else if let Some(symbol) = self.scopes[0].first_mut().get_mut(&symbol) {
+            } else if let Some(symbol) = self.scopes[0].first_mut().get_mut(symbol) {
                *symbol = value;
                 return Ok(Nil);
             }
         }
 
-        Err(format!("undefined symbol '{}' in set", symbol))
+        Err(format!("undefined symbol '{}'", symbol))
+    }
+
+    fn scope_get(&mut self, symbol: &String) -> result::Result<&mut Value, String> {
+        if self.calls.len() == 0 {
+            for scope in self.scopes.iter_mut().rev() {
+                if let Some(symbol) = scope.lookup_mut(symbol) {
+                    return Ok(symbol);
+                }
+            }
+        } else {
+            let last = self.scopes.len() - 1;
+
+            if self.scopes[last].contains(symbol) {
+                return Ok(
+                    self.scopes[last]
+                        .lookup_mut(symbol)
+                        .expect("100% rust bug not mine")
+                );
+            } else if let Some(symbol) = self.scopes[0].first_mut().get_mut(symbol) {
+                return Ok(symbol);
+            }
+        }
+
+        Err(format!("undefined symbol '{}'", symbol))
     }
 
     fn eval_native(&mut self,
@@ -372,9 +404,55 @@ impl Ast {
                             }
                         }
 
-                        match self.scope_set(symbol.clone(), value) {
+                        match self.scope_set(&symbol, value) {
                             Ok(_) => {},
                             error => return error
+                        }
+                    },
+                    List(list) if list.len() > 1 => {
+                        let mut value = Nil;
+                        if arguments.len() - 1 > i {
+                            i += 1;
+
+                            match self.eval(arguments[i].clone()) {
+                                Ok(v) => value = v,
+                                error => return error
+                            }
+                        }
+
+                        let mut tree = vec![];
+                        for node in &list[1..] {
+                            match self.eval(node.clone()) {
+                                Ok(Number(n)) => tree.push(n as usize),
+                                Ok(invalid) => return Err(format!("invalid list position '{}'", invalid)),
+                                error => return error
+                            }
+                        }
+
+                        match &list[0] {
+                            Symbol(s) => match self.scope_get(s) {
+                                Ok(mut target) => match target {
+                                    List(_) => {
+                                        for i in 0..tree.len() {
+                                            match target {
+                                                List(list) => {
+                                                    let index = tree[i];
+                                                    if index < list.len() {
+                                                        target = &mut list[index];
+                                                    } else {
+                                                        return Err(format!("invalid index '{}'", index));
+                                                    }
+                                                },
+                                                invalid => return Err(format!("invalid list '{}'", invalid)),
+                                            }
+                                        }
+                                        *target = value;
+                                    },
+                                    invalid => return Err(format!("invalid list '{}'", invalid)),
+                                }
+                                Err(message) => return Err(message)
+                            }
+                            _ => return Err(format!("invalid binding '{}' in set", List(list))),
                         }
                     }
                     invalid => return Err(format!("invalid binding '{}' in set", invalid))
@@ -536,7 +614,7 @@ impl Ast {
                                     self.last_scope().push(env);
 
                                     for value in list {
-                                        match self.scope_set(symbol.clone(), value) {
+                                        match self.scope_set(symbol, value) {
                                             Ok(_) => {},
                                             error => return error
                                         }
