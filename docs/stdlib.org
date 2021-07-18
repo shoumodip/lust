@@ -321,14 +321,13 @@ Return the tail of ~LIST~.
 (cdr list) ; => (2 3 4 5)
 #+end_src
 
-** ~(nth N SEQUENCE)~
-Return the ~N~-th element of ~SEQUENCE~. The behaviour of ~N~ is
+** ~(nth N LIST)~
+Return the ~N~-th element of ~LIST~. The behaviour of ~N~ is
 similar to that of ~set~ in the list form.
 
 #+begin_src lisp
 (let list '(1 2 3 4 (5 6 (7 8))))
 (nth 0 list)        ; => 1
-(nth 2 "string")    ; => r
 (nth '(4 2 1) list) ; => 8
 #+end_src
 
