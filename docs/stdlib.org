@@ -639,6 +639,24 @@ Convert ~BOOLEAN~ to a string.
 (boolean->string false) ; => "false"
 #+end_src
 
+** ~(string->number STRING)~
+Convert ~STRING~ to a possible number.
+
+#+begin_src lisp
+(string->number "420")    ; => 420
+(string->number "69.420") ; => 69.420
+(string->number "4.2.0")  ; => error: invalid number '4.2.0'
+(string->number "foo")    ; => error: invalid number 'foo'
+#+end_src
+
+** ~(number->string NUMBER)~
+Convert ~NUMBER~ to a string.
+
+#+begin_src lisp
+(number->string 420)     ; => "420"
+(number->string 69.420)  ; => "69.420"
+#+end_src
+
 ** ~(function->list FUNCTION)~
 Convert a lambda or macro to a list. The possibilities with this are
 /literally endless/, considering you can straight up modify the source
