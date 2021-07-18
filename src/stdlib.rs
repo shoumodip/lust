@@ -147,16 +147,32 @@ fn open(arguments: Vec<Value>) -> Result {
 
     if arguments.len() == 1 {
         match &arguments[0] {
-            String(file_path) | Symbol(file_path) => {
-                match fs::read_to_string(file_path) {
-                    Ok(contents) => Ok(String(contents)),
-                    Err(error) => Err(format!("could not read file '{}': {}", file_path, error))
-                }
+            String(path) | Symbol(path) => match fs::read_to_string(path) {
+                Ok(contents) => Ok(String(contents)),
+                Err(message) => Err(format!("could not read file '{}': {}", path, message))
             },
             invalid => Err(format!("invalid file path '{}'", invalid))
         }
     } else {
         Err(format!("function 'open' takes 1 parameter(s), found {} instead", arguments.len()))
+    }
+}
+
+fn write(arguments: Vec<Value>) -> Result {
+    use Value::*;
+
+    if arguments.len() == 2 {
+        match &arguments[1] {
+            String(path) | Symbol(path) => {
+                match fs::write(path, arguments[0].to_string()) {
+                    Ok(_) => Ok(Nil),
+                    Err(message) => Err(format!("could not write to file '{}': {}", path, message))
+                }
+            },
+            invalid => Err(format!("invalid file path '{}'", invalid))
+        }
+    } else {
+        Err(format!("function 'write' takes 2 parameter(s), found {} instead", arguments.len()))
     }
 }
 
@@ -521,6 +537,7 @@ pub fn load(ast: &mut Ast) {
     ast.define("print", Native(print));
     ast.define("read", Native(read));
     ast.define("open", Native(open));
+    ast.define("write", Native(write));
     ast.define("slice", Native(slice));
 
     // Boolean conditions
