@@ -224,26 +224,43 @@ fn cdr(arguments: Vec<Value>) -> Result {
     }
 }
 
-fn elt(arguments: Vec<Value>) -> Result {
+fn nth(arguments: Vec<Value>) -> Result {
     use Value::*;
 
     if arguments.len() == 2 {
-        match &arguments[1] {
-            List(l) => match &arguments[0] {
-                Number(i) if *i >= 0.0 && (*i as usize) < l.len() => Ok(l[*i as usize].clone()),
-                invalid => Err(format!("invalid index '{}'", invalid))
-            },
+        let mut tree = vec![];
 
-            String(s) => match &arguments[0] {
-                Number(i) if *i >= 0.0 && (*i as usize) < s.len() => Ok(String(s
-                                                                              .chars()
-                                                                              .nth(*i as usize)
-                                                                              .unwrap()
-                                                                              .to_string())),
-                invalid => Err(format!("invalid index '{}'", invalid))
+        match &arguments[1] {
+            List(list) => match &arguments[0] {
+                List(l) => for node in l {
+                    match node {
+                        Number(n) if *n >= 0.0 && (*n as usize) < list.len() => tree.push(*n as usize),
+                        invalid => return Err(format!("invalid list position '{}'", invalid)),
+                    }
+                },
+                Number(n) if *n >= 0.0 && (*n as usize) < list.len() => tree.push(*n as usize),
+                invalid => return Err(format!("invalid index '{}'", invalid))
             },
-            invalid => Err(format!("invalid list '{}'", invalid))
+            invalid => return Err(format!("invalid list '{}'", invalid))
         }
+
+        let mut target = &arguments[1];
+
+        for i in 0..tree.len() {
+            match target {
+                List(list) => {
+                    let index = tree[i];
+                    if index < list.len() {
+                        target = &list[index];
+                    } else {
+                        return Err(format!("invalid index '{}'", index));
+                    }
+                },
+                invalid => return Err(format!("invalid list '{}'", invalid)),
+            }
+        }
+
+        Ok(target.clone())
     } else {
         Err(format!("function 'elt' takes 2 parameter(s), found {} instead", arguments.len()))
     }
@@ -325,7 +342,7 @@ fn string2symbol(arguments: Vec<Value>) -> Result {
             String(s) => if s.chars().any(|c| matches!(c, ' ' | '(' | ')')) {
                 Err(format!("invalid symbol '{}'", s))
             } else {
-                Ok(Symbol(s.clone()))  
+                Ok(Symbol(s.clone()))
             },
             invalid => Err(format!("invalid string '{}'", invalid))
         }
@@ -467,7 +484,7 @@ pub fn load(ast: &mut Ast) {
     // Ad-hoc primitives
     ast.define("car", Native(car));
     ast.define("cdr", Native(cdr));
-    ast.define("elt", Native(elt));
+    ast.define("nth", Native(nth));
     ast.define("cons", Native(cons));
     ast.define("cons!", Native(cons_bang));
     ast.define("print", Native(print));
@@ -497,7 +514,7 @@ pub fn load(ast: &mut Ast) {
     ast.define("boolean->string", Native(boolean2string));
     ast.define("string->boolean", Native(string2boolean));
     ast.define("function->list", Native(function2list));
-    
+
     // Arithmetic conditions
     ast.define("<", Native(arith_condition!(|a, b| a < b)));
     ast.define("<=", Native(arith_condition!(|a, b| a <= b)));
@@ -560,30 +577,6 @@ pub fn load(ast: &mut Ast) {
   (dolist (i (reverse sequence))
     (set value (function value i)))
   value)
-
-(defun list (:rest values)
-  (cons values))
-
-(defmacro set-nth (index list value)
-  (let ((result `(cons! 1
-                  (slice ,list 0 ,index)
-                  ,value
-                  (slice ,list ,(+ index 1)))))
-    (if (symbol? list)
-        `(set ,list ,result)
-      (cons result))))
-
-(defmacro insert (index list value)
-  (let ((result `(cons! 1
-                  (slice ,list 0 ,index)
-                  ,value
-                  (slice ,list ,index))))
-    (if (symbol? list)
-        `(set ,list ,result)
-      (cons result))))
-
-(defmacro push (list value)
-  `(insert (length ,list) ,list ,value))
 
 (defmacro ns (name :rest bindings)
   (eval `(let ,name '()))
