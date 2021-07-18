@@ -445,27 +445,31 @@ $ cat test
 $ lust
 > (open 'test)
 "1
-2
-"
+2"
 > (open "test")
 "1
-2
-"
+2"
 #+end_src
 
-** ~(load FILE)~
-Evaluate the contents of ~FILE~. Basically ~(eval (open FILE))~.
+** ~(write SEXP FILE)~
+Write ~SEXP~ to ~FILE~.
 
 #+begin_src console
-$ cat test
-(print (+ 1 2))
+$ ls -a
+.  ..
 $ lust
-> (eval 'test)
-3
-nil
-> (eval "test")
-3
-nil
+> (write 69 'test)
+> (open 'test)
+"69"
+> (write "Hello, world" 'test)
+> (open "test")
+"Hello, world"
+> (write '(foo bar baz) "test")
+> (open "test")
+"(foo bar baz)"
+> (write (concat (open 'test) " fizzbuzz") "test")
+> (open "test")
+"(foo bar baz) fizzbuzz"
 #+end_src
 
 * Boolean conditions
@@ -974,6 +978,7 @@ nil
 3
 nil
 #+end_src
+
 ** ~(+= NUMBER VALUE)~
 Adds ~VALUE~ to ~NUMBER~.
 
