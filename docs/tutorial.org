@@ -35,13 +35,22 @@ floating point decimal anyway.
 #+end_src
 
 ** Strings
-A list of character enclosed by double quotes. For now, backslashed
-characters are not supported, because I don't really have any
-incentive for doing so.
+A list of character enclosed by double quotes.
 
 #+begin_src lisp
 "This is a string"
 #+end_src
+
+The list of escape characters.
+
+| Character | Description       |
+|-----------+-------------------|
+| ~\n~      | Newline           |
+| ~\r~      | Carriage return   |
+| ~\t~      | Tab               |
+| ~\0~      | Null character    |
+| ~\"~      | Double quote      |
+| ~\\~      | Literal backslash |
 
 ** Booleans
 A boolean.

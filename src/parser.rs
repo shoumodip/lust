@@ -96,16 +96,54 @@ impl Parser {
 
     fn read_string(&mut self) -> Result {
         self.advance();
-        let position = self.position;
+        let mut position = self.position;
+        let mut string = String::new();
 
-        self.advance_till(&['"'], &['\n']);
+        while let Some(character) = self.get_char() {
+            if character == '"' {
+                break
+            } else if character == '\n' {
+                self.advance();
+                break;
+            } else {
+                if character == '\\' {
+                    self.advance();
+                    let character;
+
+                    match self.get_char() {
+                        Some('n')  => character = '\n',
+                        Some('r')  => character = '\r',
+                        Some('t')  => character = '\t',
+                        Some('0')  => character = '\0',
+                        Some('"')  => character = '\"',
+                        Some('\\') => character = '\\',
+                        Some(c)    => return Err(format!("invalid escape character '{}'", c)),
+                        None       => return Err("incomplete escape sequence".to_string())
+                    }
+
+                    string.push_str(
+                        &self.source[position..self.position - 1]
+                            .iter()
+                            .collect::<String>()
+                    );
+
+                    position = self.position + 1;
+                    string.push(character);
+                }
+                self.advance();
+            }
+        }
 
         if self.is_at_end() {
             Err("unterminated string".to_string())
         } else {
-            let string = self.source[position..self.position]
-                .iter()
-                .collect();
+            if self.position > position {
+                string.push_str(
+                    &self.source[position..self.position]
+                        .iter()
+                        .collect::<String>()
+                );
+            }
 
             self.advance();
             self.skip_whitespace();
