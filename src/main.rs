@@ -19,10 +19,11 @@ fn run_file(file_path: &str) {
 
     let tokens = parser::tokenize(source);
 
-    if let Some(tokens) = tokens {
-        if let Some(_) = ast.run(tokens) {
+    match tokens {
+        Ok(tokens) => if let Some(_) = ast.run(tokens) {
             return;
-        }
+        },
+        Err(message) => eprintln!("error: {}", message)
     }
 
     process::exit(1)
@@ -47,12 +48,14 @@ fn repl() {
             _ => {
                 let tokens = parser::tokenize(buffer);
 
-                if let Some(tokens) = tokens {
-                    match ast.run(tokens) {
+                match tokens {
+                    Ok(tokens) => match ast.run(tokens) {
                         Some(ast::Value::String(string)) => println!("\"{}\"", string),
                         Some(value) => println!("{}", value),
                         None => {}
-                    }
+                    },
+                    Err(message) => eprintln!("error: {}", message)
+
                 }
             }
         }

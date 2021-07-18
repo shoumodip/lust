@@ -572,13 +572,17 @@ impl Ast {
         } else {
             match self.eval(arguments[0].clone()) {
                 Ok(String(s)) => {
-                    if let Some(tokens) = parser::tokenize(s) {
-                        match self.run(tokens) {
-                            Some(value) => Ok(value),
-                            None => Ok(Nil)
-                        }  
-                    } else {
-                        Err("parse failure".to_string())
+                    self.calls.push("eval".to_string());
+
+                    match parser::tokenize(s) {
+                        Ok(tokens) => {
+                            self.calls.pop();
+                            match self.run(tokens) {
+                                Some(value) => Ok(value),
+                                None => Ok(Nil)
+                            }
+                        },
+                        Err(message) => Err(message)
                     }
                 },
                 Ok(sexp) => match self.eval(sexp) {
@@ -720,6 +724,7 @@ impl Ast {
                         }
                     }
 
+                    self.calls.clear();
                     return None
                 }
             }

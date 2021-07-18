@@ -1,3 +1,4 @@
+use std::result;
 use crate::ast::{Value, Result};
 
 struct Parser {
@@ -177,7 +178,7 @@ impl Parser {
     }
 }
 
-pub fn tokenize(source: String) -> Option<Vec<Value>> {
+pub fn tokenize(source: String) -> result::Result<Vec<Value>, String> {
     let mut parser = Parser::new(source);
     let mut tokens = vec![];
 
@@ -186,12 +187,9 @@ pub fn tokenize(source: String) -> Option<Vec<Value>> {
 
         match parser.read_token() {
             Ok(token) => tokens.push(token),
-            Err(message) => {
-                eprintln!("[line {}] {}", line, message);
-                return None;
-            }
+            Err(message) => return Err(format!("{} in line {}", message, line))
         }
     }
 
-    Some(tokens)
+    Ok(tokens)
 }
