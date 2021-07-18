@@ -360,18 +360,19 @@ impl Ast {
 
             while i < arguments.len() {
                 match arguments[i].clone() {
-                    Symbol(symbol) => if arguments.len() - 1 > i {
-                        i += 1;
+                    Symbol(symbol) => {
+                        let mut value = Nil;
 
-                        match self.eval(arguments[i].clone()) {
-                            Ok(value) => match self.scope_set(symbol, value) {
-                                Ok(_) => {},
+                        if arguments.len() - 1 > i {
+                            i += 1;
+
+                            match self.eval(arguments[i].clone()) {
+                                Ok(v) => value = v,
                                 error => return error
-                            },
-                            error => return error
+                            }
                         }
-                    } else {
-                        match self.scope_set(symbol.clone(), Nil) {
+
+                        match self.scope_set(symbol.clone(), value) {
                             Ok(_) => {},
                             error => return error
                         }
