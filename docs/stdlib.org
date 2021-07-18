@@ -43,6 +43,38 @@ Returns ~nil~.
 (print number)     ; => 420
 #+end_src
 
+~set~ can also be used to mutate an element in a list. The symbol form
+is ~(LIST POSITION)~.
+
+#+begin_src lisp
+(let list '(1 2 3 4 (5 6 (7 8)))
+     number)
+
+(print list)                      ; => (1 2 3 4 (5 6 (7 8)))
+(print number)                    ; => nil
+
+;; list[4][2][1] = foo
+(set (list 4 2 1) 'foo
+     number 420)
+
+(print list)                      ; => (1 2 3 4 (5 6 (7 foo)))
+(print number)                    ; => 420
+
+;; Order doesn't matter
+(set number 69
+     (list 4 2 1) 'bar)
+
+(print list)                      ; => (1 2 3 4 (5 6 (7 bar)))
+(print number)                    ; => 69
+
+;; No value defaults to nil
+(set number 'baz
+     (list 4 2 0))
+
+(print list)                      ; => (1 2 3 4 (5 6 (nil bar)))
+(print number)                    ; => baz
+#+end_src
+
 ** ~(do [BODY])~
 Evaluate the expressions in the ~BODY~ sequentially.
 
@@ -291,13 +323,14 @@ Return the tail of ~LIST~.
 #+end_src
 
 ** ~(nth N SEQUENCE)~
-Return the ~N~-th element of ~SEQUENCE~.
+Return the ~N~-th element of ~SEQUENCE~. The behaviour of ~N~ is
+similar to that of ~set~ in the list form.
 
 #+begin_src lisp
-(let list '(1 2 3 4 5))
+(let list '(1 2 3 4 (5 6 (7 8))))
 (nth 0 list)     ; => 1
-(nth 9 list)     ; => nil
 (nth 2 "string") ; => r
+(nth '(4 2 1))   ; => 8
 #+end_src
 
 ** ~(cons VALUE ...)~
@@ -307,15 +340,13 @@ Combine the values together into a single list.
 (cons '(1 2) '(3 4) '((5 6) 7)) ; => (1 2 3 4 (5 6) 7)
 #+end_src
 
-** ~(append VALUE ...)~
-Same as =cons=.
+** ~(cons! N VALUE ...)~
+Combine the values together into a single list, except for the ~N~-th
+item, which is pushed into the list instead.
 
 #+begin_src lisp
-(append '(1 2) '(3 4) '((5 6) 7)) ; => (1 2 3 4 (5 6) 7)
+(cons! 1 '(1 2) '(3 4) '((5 6) 7)) ; => (1 2 (3 4) (5 6) 7)
 #+end_src
-
-Only there for domain-specific terms, which I think is super important
-for writing readable code.
 
 ** ~(slice SEQUENCE [LOWER] [UPPER])~
 Slice ~SEQUENCE~ by the bounds supplied, defaulting to the two ends
@@ -855,18 +886,6 @@ Zip the elements of ~A~ and ~B~ together.
 (zip '(1 2 3) '(1 3 4)) ; => ((1 1) (2 3) (3 4))
 #+end_src
 
-** ~(set-nth LIST N VALUE)~
-Set the ~N~-th element of ~LIST~ to ~VALUE~.
-
-#+begin_src lisp
-(let list '(1 2 3 4 5))
-(print list)            ; => (1 2 3 4 5)
-
-(set-nth list 1 'meh)
-(print list)            ; => (1 'meh 3 4 5)
-
-(set-nth '(1 2) 1 'lol) ; => (1 lol)
-#+end_src
 ** ~(ns NAME [BINDINGS])~
 Kind of a hack to implement namespaces. Basically it adds a
 ~NAMESPACE/~ before all the forms called inside it.
@@ -923,6 +942,20 @@ Infinite!
 ...
 #+end_src
 
+** ~(load FILE)~
+Evaluate the contents of ~FILE~. Basically ~(eval (open FILE))~.
+
+#+begin_src console
+$ cat test
+(print (+ 1 2))
+$ lust
+> (eval 'test)
+3
+nil
+> (eval "test")
+3
+nil
+#+end_src
 ** ~(+= NUMBER VALUE)~
 Adds ~VALUE~ to ~NUMBER~.
 
@@ -977,4 +1010,3 @@ Performs modulo on ~VALUE~ by ~NUMBER~.
 (%= number 4)
 (print number) ; => 3
 #+end_src
-
