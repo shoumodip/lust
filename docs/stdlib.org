@@ -869,6 +869,16 @@ Return ~true~ if ~NUMBER~ is odd.
 (odd? 4) ; => false
 #+end_src
 
+** ~(empty? SEQUENCE)~
+Return ~true~ if ~SEQUENCE~ is empty.
+
+#+begin_src lisp
+(empty? '())  ; => true
+(empty? "")   ; => true
+(empty? '(1)) ; => false
+(empty? "a")  ; => false
+#+end_src
+
 ** ~(map FUNCTION LIST)~
 Execute ~FUNCTION~ on every item in ~LIST~ and generate a new list
 from the results.
