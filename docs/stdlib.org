@@ -472,6 +472,18 @@ $ lust
 "(foo bar baz) fizzbuzz"
 #+end_src
 
+** ~args~
+The list of command line arguments.
+
+#+begin_src console
+$ cat test.lisp
+(print args)
+$ lust test.lisp
+()
+$ lust test.lisp foo bar baz
+("foo" "bar" "baz")
+#+end_src
+
 * Boolean conditions
 ** ~(and ...)~
 Returns ~true~ if all the values are truthy. Exhibits short-circuit
