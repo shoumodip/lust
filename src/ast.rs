@@ -292,7 +292,7 @@ impl Ast {
                        arguments: &[Value]) -> Result
     {
         let mut parameters: Vec<Value> = vec![];
-        
+
         for argument in arguments {
             match self.eval(argument.clone()) {
                 Ok(value) => parameters.push(value),

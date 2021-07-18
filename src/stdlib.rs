@@ -72,8 +72,8 @@ macro_rules! arith_condition {
                             if !$predicate(previous, n) { return Ok(Boolean(false)) }
                         } else {
                             previous_set = true;
-                        }  
-                        
+                        }
+
                         previous = n;
                     },
                     invalid => return Err(format!("invalid number '{}'", invalid))
