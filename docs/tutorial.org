@@ -49,7 +49,7 @@ The list of escape characters.
 | ~\r~      | Carriage return   |
 | ~\t~      | Tab               |
 | ~\0~      | Null character    |
-| ~\"~      | Double quote      |
+| ~\“~      | Double quote      |
 | ~\\~      | Literal backslash |
 
 ** Booleans
