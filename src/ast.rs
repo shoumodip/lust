@@ -661,7 +661,11 @@ impl Ast {
                 "while" => self.eval_while(arguments),
                 "lambda" => eval_lambda_form(arguments, false),
                 "macro" => eval_lambda_form(arguments, true),
-                "quote" => Ok(arguments[0].clone()),
+                "quote" => if arguments.len() > 0 {
+                    Ok(arguments[0].clone())
+                } else {
+                    Ok(Nil)
+                },
                 "quasiquote" => self.eval_quasiquote(arguments[0].clone()),
                 "eval" => self.eval_eval(arguments),
                 _ => error
@@ -720,7 +724,7 @@ impl Ast {
                         while i > 0 {
                             i -= 1;
                             if i > 0 && self.calls[i] == self.calls[i - 1] { continue; }
-                            eprintln!("In {}()", self.calls[i]);
+                            eprintln!("In ({})", self.calls[i]);
                         }
                     }
 

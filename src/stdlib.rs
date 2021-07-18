@@ -161,9 +161,9 @@ fn open(arguments: Vec<Value>) -> Result {
 }
 
 fn cons(arguments: Vec<Value>) -> Result {
-    let mut result = vec![];
-
     use Value::*;
+
+    let mut result = vec![];
     for value in arguments {
         match value {
             List(l) => result.extend(l),
@@ -172,6 +172,34 @@ fn cons(arguments: Vec<Value>) -> Result {
     }
 
     Ok(List(result))
+}
+
+fn cons_bang(arguments: Vec<Value>) -> Result {
+    if arguments.len() < 1 {
+        Err("variadic lambda '{}' takes at least 1 parameter(s), found 0 instead".to_string())
+    } else {
+        use Value::*;
+
+        let mut result = vec![];
+        let mut index = 0;
+        let push_index;
+
+        match &arguments[0] {
+            Number(n) if n >= &0.0 => push_index = *n as usize,
+            invalid => return Err(format!("invalid index '{}'", invalid))
+        }
+
+        for value in &arguments[1..] {
+            match value {
+                List(l) if index != push_index => if l.len() != 0 { result.extend(l.clone()) },
+                value => result.push(value.clone())
+            }
+
+            index += 1;
+        }
+
+        Ok(List(result))
+    }
 }
 
 fn car(arguments: Vec<Value>) -> Result {
@@ -196,18 +224,18 @@ fn cdr(arguments: Vec<Value>) -> Result {
     }
 }
 
-fn nth(arguments: Vec<Value>) -> Result {
+fn elt(arguments: Vec<Value>) -> Result {
     use Value::*;
 
     if arguments.len() == 2 {
         match &arguments[1] {
             List(l) => match &arguments[0] {
-                Number(i) if *i >= 0.0 && *i as usize <= l.len() => Ok(l[*i as usize].clone()),
+                Number(i) if *i >= 0.0 && (*i as usize) < l.len() => Ok(l[*i as usize].clone()),
                 invalid => Err(format!("invalid index '{}'", invalid))
             },
 
             String(s) => match &arguments[0] {
-                Number(i) if *i >= 0.0 && *i as usize <= s.len() => Ok(String(s
+                Number(i) if *i >= 0.0 && (*i as usize) < s.len() => Ok(String(s
                                                                               .chars()
                                                                               .nth(*i as usize)
                                                                               .unwrap()
@@ -217,7 +245,7 @@ fn nth(arguments: Vec<Value>) -> Result {
             invalid => Err(format!("invalid list '{}'", invalid))
         }
     } else {
-        Err(format!("function 'nth' takes 2 parameter(s), found {} instead", arguments.len()))
+        Err(format!("function 'elt' takes 2 parameter(s), found {} instead", arguments.len()))
     }
 }
 
@@ -439,9 +467,9 @@ pub fn load(ast: &mut Ast) {
     // Ad-hoc primitives
     ast.define("car", Native(car));
     ast.define("cdr", Native(cdr));
-    ast.define("nth", Native(nth));
+    ast.define("elt", Native(elt));
     ast.define("cons", Native(cons));
-    ast.define("append", Native(cons));
+    ast.define("cons!", Native(cons_bang));
     ast.define("print", Native(print));
     ast.define("read", Native(read));
     ast.define("open", Native(open));
@@ -533,14 +561,29 @@ pub fn load(ast: &mut Ast) {
     (set value (function value i)))
   value)
 
-(defmacro set-nth (list index value)
-  (let ((result `(cons
+(defun list (:rest values)
+  (cons values))
+
+(defmacro set-nth (index list value)
+  (let ((result `(cons! 1
                   (slice ,list 0 ,index)
                   ,value
                   (slice ,list ,(+ index 1)))))
     (if (symbol? list)
         `(set ,list ,result)
-      result)))
+      (cons result))))
+
+(defmacro insert (index list value)
+  (let ((result `(cons! 1
+                  (slice ,list 0 ,index)
+                  ,value
+                  (slice ,list ,index))))
+    (if (symbol? list)
+        `(set ,list ,result)
+      (cons result))))
+
+(defmacro push (list value)
+  `(insert (length ,list) ,list ,value))
 
 (defmacro ns (name :rest bindings)
   (eval `(let ,name '()))
