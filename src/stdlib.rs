@@ -374,7 +374,7 @@ fn string2boolean(arguments: Vec<Value>) -> Result {
             String(b) if b == "true" => Ok(Boolean(true)),
             String(b) if b == "false" => Ok(Boolean(false)),
             String(invalid) => Err(format!("invalid boolean '{}'", invalid)),
-            invalid => Err(format!("invalid invalid '{}'", invalid))
+            invalid => Err(format!("invalid string '{}'", invalid))
         }
     } else {
         Err(format!("function 'string->boolean' takes 1 parameter(s), found {} instead",
@@ -392,6 +392,37 @@ fn boolean2string(arguments: Vec<Value>) -> Result {
         }
     } else {
         Err(format!("function 'boolean->string' takes 1 parameter(s), found {} instead",
+                    arguments.len()))
+    }
+}
+
+fn string2number(arguments: Vec<Value>) -> Result {
+    use Value::*;
+
+    if arguments.len() == 1 {
+        match &arguments[0] {
+            String(s) => match s.parse::<f64>() {
+                Ok(number) => Ok(Number(number)),
+                Err(_) => Err(format!("invalid number '{}'", s))
+            },
+            invalid => Err(format!("invalid string '{}'", invalid))
+        }
+    } else {
+        Err(format!("function 'string->number' takes 1 parameter(s), found {} instead",
+                    arguments.len()))
+    }
+}
+
+fn number2string(arguments: Vec<Value>) -> Result {
+    use Value::*;
+
+    if arguments.len() == 1 {
+        match &arguments[0] {
+            Number(n) => Ok(String(n.to_string())),
+            invalid => Err(format!("invalid number '{}'", invalid))
+        }
+    } else {
+        Err(format!("function 'number->string' takes 1 parameter(s), found {} instead",
                     arguments.len()))
     }
 }
@@ -513,6 +544,8 @@ pub fn load(ast: &mut Ast) {
     ast.define("symbol->string", Native(symbol2string));
     ast.define("boolean->string", Native(boolean2string));
     ast.define("string->boolean", Native(string2boolean));
+    ast.define("number->string", Native(number2string));
+    ast.define("string->number", Native(string2number));
     ast.define("function->list", Native(function2list));
 
     // Arithmetic conditions
