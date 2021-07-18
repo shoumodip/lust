@@ -525,7 +525,7 @@ fn range(arguments: Vec<Value>) -> Result {
     }
 }
 
-pub fn load(ast: &mut Ast) {
+pub fn load(ast: &mut Ast, arguments: Vec<Value>) {
     use Value::*;
 
     // Ad-hoc primitives
@@ -670,4 +670,6 @@ pub fn load(ast: &mut Ast) {
 (defun load (path)
   (eval (open path)))
 ".to_string()).expect("100% rust bug not mine")).expect("100% rust bug not mine");
+
+    ast.define("args", Value::List(arguments));
 }

@@ -6,23 +6,21 @@ use std::io::{self, Write};
 use std::fs;
 use std::env;
 use std::process;
-use ast::Ast;
+use ast::{Ast, Value};
 
-fn run_file(file_path: &str) {
-    let source = fs::read_to_string(file_path).unwrap_or_else(|error| {
-        eprintln!("lust: could not read file '{}': {}", file_path, error);
+fn run_file(path: &str, arguments: Vec<Value>) {
+    let source = fs::read_to_string(path).unwrap_or_else(|error| {
+        eprintln!("lust: could not read file '{}': {}", path, error);
         process::exit(1);
     });
 
     let mut ast = Ast::new();
-    stdlib::load(&mut ast);
+    stdlib::load(&mut ast, arguments);
 
     let tokens = parser::tokenize(source);
 
     match tokens {
-        Ok(tokens) => if let Some(_) = ast.run(tokens) {
-            return;
-        },
+        Ok(tokens) => if let Some(_) = ast.run(tokens) { return },
         Err(message) => eprintln!("error: {}", message)
     }
 
@@ -33,7 +31,7 @@ fn repl() {
     let mut buffer;
     let mut ast = Ast::new();
 
-    stdlib::load(&mut ast);
+    stdlib::load(&mut ast, vec![]);
 
     loop {
         print!("> ");
@@ -50,7 +48,7 @@ fn repl() {
 
                 match tokens {
                     Ok(tokens) => match ast.run(tokens) {
-                        Some(ast::Value::String(string)) => println!("\"{}\"", string),
+                        Some(Value::String(string)) => println!("\"{}\"", string),
                         Some(value) => println!("{}", value),
                         None => {}
                     },
@@ -65,15 +63,17 @@ fn repl() {
 }
 
 fn main() {
-    let mut files = 0;
+    let arguments = env::args().collect::<Vec<String>>();
 
-    for (index, file_path) in env::args().enumerate() {
-        if index == 0 { continue; }
-        run_file(&file_path);
-        files += 1;
-    }
-
-    if files == 0 {
+    if arguments.len() == 1 {
         repl();
+    } else {
+        let path = &arguments[1];
+        let args = arguments[2..]
+            .iter()
+            .map(|s| Value::String(s.to_string()))
+            .collect();
+
+        run_file(path, args);
     }
 }
