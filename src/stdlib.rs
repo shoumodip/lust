@@ -383,7 +383,7 @@ fn function2list(arguments: Vec<Value>) -> Result {
             invalid => Err(format!("invalid lambda '{}'", invalid))
         }
     } else {
-        Err(format!("function 'lambda->list' takes 1 parameter(s), found {} instead",
+        Err(format!("function 'function->list' takes 1 parameter(s), found {} instead",
                     arguments.len()))
     }
 }

@@ -616,15 +616,16 @@ and do *whatever* you want with the list (evaluate a changed version,
 maybe?).
 
 #+begin_src lisp
-(defun double (n)
-  (print (concat "Doubling " n))
-  (* n 2))
+(let double (lambda (n)
+              (print (concat "Doubling " n))
+              (* n 2)))
 
 (function->list double) ; => (lambda (n) (print (concat "Doubling " n)) (* n 2))
 
-(defmacro echo (s)
-  (print s)
-  (print s))
+(let echo (macro
+           (s)
+           (print s)
+           (print s)))
 
 (function->list echo)   ; => (macro (s) (print s) (print s))
 #+end_src
@@ -645,29 +646,31 @@ Anonymous lambdas and macros can also be used.
 Variadics are also handled smoothly.
 
 #+begin_src lisp
-(defun add (:rest numbers)
-  (let ((result 0))
-    (dolist (i numbers)
-      (+= result i))
-    result))
+(let add (lambda (:rest numbers)
+           (let ((result 0))
+             (dolist (i numbers)
+               (+= result i))
+             result)))
 
-(defun sub (first :rest numbers)
-  (let ((result first))
-    (dolist (i numbers)
-      (-= result i))
-    result))
+(let sub (lambda (first :rest numbers)
+           (let ((result first))
+             (dolist (i numbers)
+               (-= result i))
+             result)))
 
 (function->list add)  ; => (lambda (:rest numbers) (let ((result 0)) (dolist (i numbers) (+= result i)) result))
 (function->list sub)  ; => (lambda (first :rest numbers) (let ((result first)) (dolist (i numbers) (+= result i)) result))
 
-(defmacro echo (:rest list)
-  (dolist (i list)
-    (print i)))
+(let echo (macro
+           (:rest list)
+           (dolist (i list)
+             (print i))))
 
-(defmacro echo (first :rest list)
-  (print first)
-  (dolist (i list)
-    (print i)))
+(let echo (macro
+           (first :rest list)
+           (print first)
+           (dolist (i list)
+             (print i))))
 
 (function->list echo) ; => (macro (first :rest list) (print first) (dolist (i list) (print i)))
 #+end_src
