@@ -386,7 +386,7 @@ $ touch expression.lisp
 
 #+begin_src lisp
 ;; FILE: expression.lisp
-(print 
+(print
  (if (even? 4)
      (+ 2 3)
    2))

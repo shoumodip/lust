@@ -1,5 +1,5 @@
 * About
-Very simple Lisp interpreter in Rust.
+[[https://en.wikipedia.org/wiki/Lisp_(programming_language)][Lisp]] interpreter in Rust.
 
 * Installation
 #+begin_src console
@@ -10,19 +10,30 @@ $ cargo install --path .
 
 * Usage
 ** Repl
-Launch a REPL, use =CTRL-d= or =CTRL-C= to exit.
+Launch a REPL, use =CTRL-d= or =CTRL-c= to exit.
 
 #+begin_src console
 $ lust
 #+end_src
 
-** Run files
-Run files sequentially, exits in case of error.
+** Execute
+Execute a file, exits in case of error.
 
 #+begin_src console
-$ lust file1 [file2] [file3]
+$ lust FILE [ARGS]
 #+end_src
 
 * Documentation
 - [[https://github.com/shoumodip/lust/blob/main/docs/tutorial.org][Tutorial]]
 - [[https://github.com/shoumodip/lust/blob/main/docs/stdlib.org][Standard Library]]
+
+* Goals
+- Implement cool features
+- Make the standard library bloated as hell
+- Make the features as well as the library functions consistent
+- Make the forms predictable and intuitive
+- Have fun
+
+* Non goals
+- Performance
+- ANSI Lisp Compatibility
