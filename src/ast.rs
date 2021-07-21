@@ -20,6 +20,26 @@ pub enum Value {
     Nil,
 }
 
+#[derive(PartialEq, Copy, Clone)]
+enum BlockFlag {
+    Return,
+    Continue,
+    Break,
+    None
+}
+
+impl fmt::Display for BlockFlag {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use BlockFlag::*;
+        write!(f, "{}", match self {
+            None => "",
+            Continue => "continue",
+            Break => "break",
+            Return => "return"
+        })
+    }
+}
+
 pub fn is_true(value: &Value) -> bool {
     use Value::*;
     match value {
@@ -182,6 +202,7 @@ impl Scope {
 }
 
 pub struct Ast {
+    flag: BlockFlag,
     calls: Vec<String>,
     scopes: Vec<Scope>,
 }
@@ -189,6 +210,7 @@ pub struct Ast {
 impl Ast {
     pub fn new() -> Self {
         Self {
+            flag: BlockFlag::None,
             calls: vec![],
             scopes: vec![Scope::new()],
         }
@@ -315,6 +337,8 @@ impl Ast {
                        is_macro: bool,
                        body: Vec<Value>) -> Result
     {
+        use BlockFlag::*;
+
         let parameters_length = parameters.len();
         let arguments_length = arguments.len();
 
@@ -372,6 +396,13 @@ impl Ast {
         self.calls.push(name);
 
         let mut result = self.eval_do(&body);
+        match self.flag {
+            Continue | Break => return Err(format!("cannot call ({}) inside {}",
+                                                   self.flag,
+                                                   if is_macro {"macro"} else {"function"})),
+            _ => {}
+        }
+
         self.pop_scope();
 
         if let Ok(value) = &result {
@@ -494,6 +525,7 @@ impl Ast {
 
                     self.last_scope().push(env);
                     let result = self.eval_do(&arguments[1..]);
+
                     self.last_scope().pop();
                     result
                 },
@@ -524,12 +556,21 @@ impl Ast {
 
     fn eval_do(&mut self, body: &[Value]) -> Result {
         use Value::*;
+        use BlockFlag::*;
+
+        self.flag = None;
 
         let mut result = Nil;
         for expression in body {
             match self.eval(expression.clone()) {
                 Ok(value) => result = value,
                 error => return error,
+            }
+
+            match self.flag {
+                None => {},
+                Continue | Break => return Ok(Nil),
+                Return => return Ok(result),
             }
         }
 
@@ -557,7 +598,7 @@ impl Ast {
         }
     }
 
-    fn eval_do_condition(&mut self, arguments: &[Value], condition: bool) -> Result {
+    fn eval_do_condition(&mut self, arguments: &[Value], condition: bool, _form: &str) -> Result {
         use Value::*;
 
         if arguments.len() == 0 {
@@ -576,6 +617,7 @@ impl Ast {
 
     fn eval_while(&mut self, arguments: &[Value]) -> Result {
         use Value::*;
+        use BlockFlag::*;
 
         if arguments.len() < 1 {
             Ok(Nil)
@@ -591,6 +633,12 @@ impl Ast {
                     },
                     error => return error
                 }
+
+                match self.flag {
+                    Break => return Ok(Nil),
+                    Return => return Ok(result),
+                    _ => {}
+                }
             }
 
             Ok(result)
@@ -599,6 +647,7 @@ impl Ast {
 
     fn eval_dolist(&mut self, arguments: &[Value]) -> Result {
         use Value::*;
+        use BlockFlag::*;
 
         if arguments.len() < 1 {
             Ok(Nil)
@@ -610,6 +659,7 @@ impl Ast {
                             Ok(List(list)) => {
                                 if list.len() > 0 {
                                     let mut env = Env::new();
+
                                     env.insert(symbol.clone(), Nil);
                                     self.last_scope().push(env);
 
@@ -620,8 +670,15 @@ impl Ast {
                                         }
 
                                         match self.eval_do(&arguments[1..]) {
-                                            Ok(_) => {},
+                                            Ok(value) => if self.flag == Return {
+                                                return Ok(value);
+                                            },
                                             error => return error
+                                        }
+
+                                        match self.flag {
+                                            Continue | Break => return Ok(Nil),
+                                            _ => {}
                                         }
                                     }
 
@@ -717,6 +774,7 @@ impl Ast {
 
     fn eval_call(&mut self, name: String, arguments: &[Value]) -> Result {
         use Value::*;
+        use BlockFlag::*;
 
         match self.lookup(&name) {
             Ok(value) => match value {
@@ -734,8 +792,8 @@ impl Ast {
                 "set" => self.eval_set(arguments),
                 "do" => self.eval_do(arguments),
                 "if" => self.eval_if(arguments),
-                "when" => self.eval_do_condition(arguments, true),
-                "unless" => self.eval_do_condition(arguments, false),
+                "when" => self.eval_do_condition(arguments, true, "when"),
+                "unless" => self.eval_do_condition(arguments, false, "unless"),
                 "dolist" => self.eval_dolist(arguments),
                 "while" => self.eval_while(arguments),
                 "lambda" => eval_lambda_form(arguments, false),
@@ -745,7 +803,28 @@ impl Ast {
                 } else {
                     Ok(Nil)
                 },
-                "quasiquote" => self.eval_quasiquote(arguments[0].clone()),
+                "quasiquote" => if arguments.len() > 0 {
+                    self.eval_quasiquote(arguments[0].clone())
+                } else {
+                    Ok(Nil)
+                },
+                "return" => {
+                    self.flag = Return;
+
+                    if arguments.len() > 0 {
+                        self.eval(arguments[0].clone())
+                    } else {
+                        Ok(Nil)
+                    }
+                }
+                "break" => {
+                    self.flag = Break;
+                    Ok(Nil)
+                },
+                "continue" => {
+                    self.flag = Continue;
+                    Ok(Nil)
+                },
                 "eval" => self.eval_eval(arguments),
                 _ => error
             }

@@ -114,8 +114,7 @@ macro_rules! arith_operation {
 
         let mutate = $ast.run(parser::tokenize(format!(
         "(macro (symbol value)
-          (eval
-            `(set ,symbol ({} ,symbol ,value))))", $name)).expect("100% rust bug not mine"));
+          `(set ,symbol ({} ,symbol ,value)))", $name)).expect("100% rust bug not mine"));
 
         $ast.define(&format!("{}=", $name), mutate.expect("100% rust bug not mine"));
     }};
