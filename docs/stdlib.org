@@ -292,6 +292,140 @@ Quasi quote an expression. Shorthand exists for this operation.
 `(1 2 ,@(3 4 5 6))                      ; => (1 2 3 4 5 6)
 #+end_src
 
+** ~(break)~
+Break out of a block, and by extension anything which uses them like
+loops and functions.
+
+#+begin_src lisp
+$ cat break.lisp
+(dolist (i '(1 2 3 4 5))
+  (when (= i 3)
+    (break))
+  (print i))
+
+(let ((i 0))
+  (while (< i 10)
+    (set i (+ i 1))
+    (when (= i 3)
+      (break))
+    (print i)))
+
+(do
+ (print 'foo)
+ (break)
+ (print 'bar))
+
+(let f (lambda ()
+         (print 'fizzbuzz)
+         (break)
+         (print '69-420)))
+
+(print (concat "Result of f: " (f)))
+#+end_src
+
+#+begin_src console
+$ lust break.lisp
+1
+2
+1
+2
+foo
+fizzbuzz
+Result of f: nil
+#+end_src
+
+** ~(continue)~
+Skip the rest of the body inside a block.
+
+#+begin_src lisp
+$ cat continue.lisp
+(dolist (i '(1 2 3 4 5))
+  (when (= i 3)
+    (continue))
+  (print i))
+
+(let ((i 0))
+  (while (< i 10)
+    (set i (+ i 1))
+    (when (= i 3)
+      (continue))
+    (print i)))
+
+(do
+ (print 'foo)
+ (continue)
+ (print 'bar))
+
+(let f (lambda ()
+         (print 'fizzbuzz)
+         (continue)
+         (print '69-420)))
+
+(print (concat "Result of f: " (f)))
+#+end_src
+
+#+begin_src console
+$ lust continue.lisp
+1
+2
+4
+5
+1
+2
+4
+5
+foo
+fizzbuzz
+Result of f: nil
+#+end_src
+
+** ~(return [VALUE])~
+Return from within a block, with an optional ~VALUE~.
+
+#+begin_src lisp
+$ cat return.lisp
+(print (concat "Result of dolist: "
+               (dolist (i '(1 2 3 4 5))
+                 (when (= i 3)
+                   (return 'foobar-dolist))
+                 (print i))))
+
+(print (concat "Result of let: "
+               (let ((i 0))
+                 (while (< i 10)
+                   (set i (+ i 1))
+                   (when (= i 3)
+                     (return i))
+                   (print i))))))
+
+(print (concat "Result of do: "
+               (do
+                (print 'foo)
+                (return 69)
+                (print 'bar))))
+
+(let f (lambda ()
+         (print 'fizzbuzz)
+         (return)                     ; Empty (return), results in nil
+         (print '69-420)))
+
+(print (concat "Result of f: " (f)))
+#+end_src
+
+#+begin_src console
+$ lust return.lisp
+1
+2
+Result of dolist: foobar-dolist
+1
+2
+Result of let: 3
+foo
+Result of do: 69
+fizzbuzz
+Result of f: nil
+#+end_src
+
 ** ~(eval SEXP)~
 If ~SEXP~ is a string, interpret it as lust source code. Evaluate all
 other expression types.
