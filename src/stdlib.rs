@@ -652,12 +652,7 @@ pub fn load(ast: &mut Ast, arguments: Vec<Value>) {
     result))
 
 (defun zip (a b)
-  (let ((result '()))
-    (while (and a b)
-      (set result (cons! 1 result `(,(car a) ,(car b)))
-           a (cdr a)
-           b (cdr b)))
-    result))
+  (zipwith cons a b))
 
 (defun empty? (sequence)
   (= (length sequence) 0))
