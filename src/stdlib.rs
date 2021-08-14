@@ -746,6 +746,9 @@ pub fn load(ast: &mut Ast, arguments: Vec<Value>) {
         (set result (cons! 1 result i))))
     result))
 
+(defun filter-map (predicate function list)
+  (map function (filter predicate list)))
+
 (defun foldl (function value sequence)
   (dolist (i sequence)
     (set value (function value i)))
@@ -792,7 +795,7 @@ pub fn load(ast: &mut Ast, arguments: Vec<Value>) {
 
 (defun load (path)
   (eval (open path)))
-".to_string()).expect("100% rust bug not mine")).expect("100% rust bug not mine");
+".to_string())]).unwrap();
 
     ast.define("args", Value::List(arguments));
 }
