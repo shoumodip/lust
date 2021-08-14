@@ -345,10 +345,18 @@ fn find(arguments: Vec<Value>) -> Result {
     }
 
     let index;
-    match &arguments[1] {
-        List(l) => index = l[start..].iter().position(|e| e == &arguments[0]),
-        String(s) | Symbol(s) => match &arguments[0] {
-            String(p) | Symbol(p) => index = s[start..].find(p),
+    match &arguments[0] {
+        List(l) => if start < l.len() {
+            index = l[start..].iter().position(|e| e == &arguments[1]);
+        } else {
+            return Err(format!("invalid start index '{}'", start));
+        },
+        String(s) | Symbol(s) => match &arguments[1] {
+            String(p) | Symbol(p) => if start < s.len() {
+                index = s[start..].find(p);
+            } else {
+                return Err(format!("invalid start index '{}'", start));
+            },
             invalid => return Err(format!("invalid search pattern '{}'", invalid))
         }
         invalid => return Err(format!("invalid searchable value '{}'", invalid))
