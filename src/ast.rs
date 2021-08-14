@@ -112,7 +112,7 @@ impl fmt::Display for Value {
             Boolean(b) => write!(f, "{}", b),
             Number(n) => write!(f, "{}", n),
             Symbol(s) => write!(f, "{}", s),
-            String(s) => write!(f, "{}", s),
+            String(s) => write!(f, "{:?}", s),
             Native(_) => write!(f, "#<native>"),
             Lambda(false, _, _, _) => write!(f, "#<lambda>"),
             Lambda(true, _, _, _) => write!(f, "#<macro>"),
@@ -120,10 +120,7 @@ impl fmt::Display for Value {
                 write!(f, "(")?;
                 for (index, value) in list.iter().enumerate() {
                     if index != 0 { write!(f, " ")?; }
-                    match value {
-                        String(s) => write!(f, "\"{}\"", s),
-                        value => write!(f, "{}", value)
-                    }?;
+                    write!(f, "{}", value)?;
                 }
                 write!(f, ")")
             }
