@@ -330,6 +330,36 @@ fn length(arguments: Vec<Value>) -> Result {
     }
 }
 
+fn find(arguments: Vec<Value>) -> Result {
+    use Value::*;
+
+    let start;
+    match arguments.len() {
+        2 => start = 0,
+        3 => match &arguments[2] {
+            Number(n) => start = *n as usize,
+            invalid => return Err(format!("invalid starting index '{}'", invalid))
+        },
+        length => return Err(format!("function 'find' takes 2 or 3 parameters, found {} instead",
+                              length))
+    }
+
+    let index;
+    match &arguments[1] {
+        List(l) => index = l[start..].iter().position(|e| e == &arguments[0]),
+        String(s) | Symbol(s) => match &arguments[0] {
+            String(p) | Symbol(p) => index = s[start..].find(p),
+            invalid => return Err(format!("invalid search pattern '{}'", invalid))
+        }
+        invalid => return Err(format!("invalid searchable value '{}'", invalid))
+    }
+
+    match index {
+        Some(index) => Ok(Number((start + index) as f64)),
+        None => Ok(Number(-1.0))
+    }
+}
+
 fn reverse(arguments: Vec<Value>) -> Result {
     use Value::*;
     match &arguments[0] {
@@ -583,6 +613,7 @@ pub fn load(ast: &mut Ast, arguments: Vec<Value>) {
     ast.define("concat", Native(concat));
     ast.define("reverse", Native(reverse));
     ast.define("range", Native(range));
+    ast.define("find", Native(find));
 
     ast.run(parser::tokenize("
 (let defun (macro
@@ -627,17 +658,6 @@ pub fn load(ast: &mut Ast, arguments: Vec<Value>) {
   (dolist (i (reverse sequence))
     (set value (function value i)))
   value)
-
-(defun find (pattern string)
-  (let ((i 0)
-        (string-length (length string))
-        (pattern-length (length pattern))
-        (find-space (- string-length pattern-length)))
-    (while (< i find-space)
-      (if (= (slice string i (+ i pattern-length)) pattern)
-          (return i)
-        (+= i 1)))
-    (return -1)))
 
 (defmacro ns (name :rest bindings)
   (eval `(let ,name '()))
