@@ -854,23 +854,6 @@ impl Ast {
                 "break" => self.eval_break(),
                 "continue" => self.eval_continue(),
                 "eval" => self.eval_eval(arguments),
-                "parse" => if arguments.len() == 1 {
-                    match self.eval(arguments[0].clone()) {
-                        Ok(String(s)) => match parser::tokenize(s) {
-                            Ok(value) => if value.len() == 1 {
-                                Ok(value[0].clone())
-                            } else {
-                                Ok(List(value))
-                            },
-                            Err(error) => Err(error)
-                        },
-                        Ok(invalid) => Err(format!("invalid string '{}'", invalid)),
-                        error => error
-                    }
-                } else {
-                    Err(format!("special form 'parse' takes 1 parameter, found {} instead",
-                                arguments.len()))
-                }
                 _ => error
             }
         }

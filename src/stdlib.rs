@@ -625,6 +625,27 @@ fn range(arguments: Vec<Value>) -> Result {
     }
 }
 
+fn parse(arguments: Vec<Value>) -> Result {
+    use Value::*;
+
+    if arguments.len() == 1 {
+        match &arguments[0] {
+            String(s) => match parser::tokenize(s.clone()) {
+                Ok(tokens) => if tokens.len() == 1 {
+                    Ok(tokens[0].clone())
+                } else {
+                    Ok(List(tokens))
+                },
+                Err(error) => Err(error)
+            },
+            invalid => Err(format!("invalid string '{}'", invalid)),
+        }
+    } else {
+        Err(format!("function 'parse' takes 1 parameter(s), found {} instead",
+                    arguments.len()))
+    }
+}
+
 pub fn load(ast: &mut Ast, arguments: Vec<Value>) {
     use Value::*;
 
@@ -686,8 +707,9 @@ pub fn load(ast: &mut Ast, arguments: Vec<Value>) {
     ast.define("find", Native(find));
     ast.define("split", Native(split));
     ast.define("trim", Native(trim));
+    ast.define("parse", Native(parse));
 
-    ast.run(parser::tokenize("
+    ast.eval_eval(&[String("
 (let defun (macro
             (name arguments :rest body)
             `(let ,name (lambda ,arguments
