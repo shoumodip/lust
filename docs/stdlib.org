@@ -1069,6 +1069,15 @@ pattern is not found. Searching begins at ~START~ which defaults to
 (find '(1 2 foo) 'foo)     ; => 1
 (find '(1 2 baz) 'bar)     ; => -1
 #+end_src
+
+** ~(split STRING-LIKE DELIM)~
+Split ~STRING-LIKE~ by ~DELIM~.
+
+#+begin_src lisp
+(split "foo bar baz" " ") ; => ("foo" "bar" "baz")
+(split "foo-bar-baz" '-)  ; => ("foo" "bar" "baz")
+(split 'foo-bar-baz "-")  ; => ("foo" "bar" "baz")
+(split 'foo-bar-baz '-)   ; => ("foo" "bar" "baz")
 #+end_src
 
 ** ~(zipwith FUNCTION A B)~
