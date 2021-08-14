@@ -313,7 +313,8 @@ fn slice(arguments: Vec<Value>) -> Result {
         }
 
         match &arguments[0] {
-            String(s) | Symbol(s) => Ok(String(s[low..high].to_string())),
+            String(s) => Ok(String(s[low..high].to_string())),
+            Symbol(s) => Ok(Symbol(s[low..high].to_string())),
             List(l) => Ok(List(l[low..high].to_vec())),
             invalid => Err(format!("invalid sequence '{}'", invalid))
         }
