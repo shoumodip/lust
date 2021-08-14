@@ -121,10 +121,15 @@ macro_rules! arith_operation {
 }
 
 fn print(arguments: Vec<Value>) -> Result {
+    use Value::*;
     for argument in arguments {
-        println!("{}", argument);
+        if let String(s) = argument {
+            println!("{}", s);
+        } else {
+            println!("{}", argument);
+        }
     }
-    Ok(Value::Nil)
+    Ok(Nil)
 }
 
 fn read(arguments: Vec<Value>) -> Result {
