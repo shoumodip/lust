@@ -333,6 +333,21 @@ fn slice(arguments: Vec<Value>) -> Result {
     }
 }
 
+fn trim(arguments: Vec<Value>) -> Result {
+    use Value::*;
+
+    if arguments.len() == 1 {
+        match &arguments[0] {
+            String(s) => Ok(String(s.trim().to_string())),
+            Symbol(s) => Ok(Symbol(s.trim().to_string())),
+            _ => Ok(Nil)
+        }
+    } else {
+        Err(format!("function 'trim' takes 1 parameter(s), found {} instead",
+                    arguments.len()))
+    }
+}
+
 fn length(arguments: Vec<Value>) -> Result {
     use Value::*;
 
@@ -665,6 +680,7 @@ pub fn load(ast: &mut Ast, arguments: Vec<Value>) {
     ast.define("range", Native(range));
     ast.define("find", Native(find));
     ast.define("split", Native(split));
+    ast.define("trim", Native(trim));
 
     ast.run(parser::tokenize("
 (let defun (macro
