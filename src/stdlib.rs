@@ -370,11 +370,17 @@ fn find(arguments: Vec<Value>) -> Result {
 
 fn reverse(arguments: Vec<Value>) -> Result {
     use Value::*;
-    match &arguments[0] {
-        String(s) => Ok(String(s.chars().rev().collect())),
-        Symbol(s) => Ok(Symbol(s.chars().rev().collect())),
-        List(l) => Ok(List(l.clone().into_iter().rev().collect())),
-        _ => Ok(Nil)
+
+    if arguments.len() == 1 {
+        match &arguments[0] {
+            String(s) => Ok(String(s.chars().rev().collect())),
+            Symbol(s) => Ok(Symbol(s.chars().rev().collect())),
+            List(l) => Ok(List(l.clone().into_iter().rev().collect())),
+            _ => Ok(Nil)
+        }
+    } else {
+        Err(format!("function 'reverse' takes 1 parameter(s), found {} instead",
+                    arguments.len()))
     }
 }
 
