@@ -1055,9 +1055,10 @@ Right fold on ~LIST~ using ~FUNCTION~ with initial value ~INIT~.
 (foldr cons 0 '(1 2 3 4)) ; => (0 4 3 2 1)
 #+end_src
 
-** ~(find STRING PATTERN [START])~
-Find the index of ~PATTERN~ in ~STRING~. Returns ~-1~ if the pattern
-is not found. Searching begins at ~START~ which defaults to ~0~.
+** ~(find SEQUENCE PATTERN [START])~
+Find the index of ~PATTERN~ in ~SEQUENCE~. Returns ~-1~ if the
+pattern is not found. Searching begins at ~START~ which defaults to
+~0~.
 
 #+begin_src lisp
 (find 'foobarbaz 'bar)     ; => 3
@@ -1065,6 +1066,9 @@ is not found. Searching begins at ~START~ which defaults to ~0~.
 (find "foobarbaz" "blah")  ; => -1
 (find "substrsub" "sub" 1) ; => 6
 (find "substrsub" "foo" 3) ; => -1
+(find '(1 2 foo) 'foo)     ; => 1
+(find '(1 2 baz) 'bar)     ; => -1
+#+end_src
 #+end_src
 
 ** ~(zipwith FUNCTION A B)~
