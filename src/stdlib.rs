@@ -219,23 +219,35 @@ fn cons_bang(arguments: Vec<Value>) -> Result {
 
 fn car(arguments: Vec<Value>) -> Result {
     use Value::*;
-    match &arguments[0] {
-        List(l) => Ok(l[0].clone()),
-        Nil => Ok(Nil),
-        invalid => Err(format!("invalid list '{}'", invalid))
+
+    if arguments.len() == 1 {
+        match &arguments[0] {
+            List(l) => Ok(l[0].clone()),
+            Nil => Ok(Nil),
+            invalid => Err(format!("invalid list '{}'", invalid))
+        }
+    } else {
+        Err(format!("function 'car' takes 1 parameter(s), found {} instead",
+                    arguments.len()))
     }
 }
 
 fn cdr(arguments: Vec<Value>) -> Result {
     use Value::*;
-    match &arguments[0] {
-        List(l) => if l.len() > 1 {
-            Ok(List(l[1..].to_vec()))
-        } else {
-            Ok(Nil)
-        },
-        Nil => Ok(Nil),
-        invalid => Err(format!("invalid list '{}'", invalid))
+
+    if arguments.len() == 1 {
+        match &arguments[0] {
+            List(l) => if l.len() > 1 {
+                Ok(List(l[1..].to_vec()))
+            } else {
+                Ok(Nil)
+            },
+            Nil => Ok(Nil),
+            invalid => Err(format!("invalid list '{}'", invalid))
+        }
+    } else {
+        Err(format!("function 'cdr' takes 1 parameter(s), found {} instead",
+                    arguments.len()))
     }
 }
 
@@ -323,10 +335,16 @@ fn slice(arguments: Vec<Value>) -> Result {
 
 fn length(arguments: Vec<Value>) -> Result {
     use Value::*;
-    match &arguments[0] {
-        String(s) | Symbol(s) => Ok(Number(s.len() as f64)),
-        List(l) => Ok(Number(l.len() as f64)),
-        _ => Ok(Nil)
+
+    if arguments.len() == 1 {
+        match &arguments[0] {
+            String(s) | Symbol(s) => Ok(Number(s.len() as f64)),
+            List(l) => Ok(Number(l.len() as f64)),
+            _ => Ok(Nil)
+        }
+    } else {
+        Err(format!("function 'length' takes 1 parameter(s), found {} instead",
+                    arguments.len()))
     }
 }
 
