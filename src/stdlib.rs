@@ -628,6 +628,17 @@ pub fn load(ast: &mut Ast, arguments: Vec<Value>) {
     (set value (function value i)))
   value)
 
+(defun find (pattern string)
+  (let ((i 0)
+        (string-length (length string))
+        (pattern-length (length pattern))
+        (find-space (- string-length pattern-length)))
+    (while (< i find-space)
+      (if (= (slice string i (+ i pattern-length)) pattern)
+          (return i)
+        (+= i 1)))
+    (return -1)))
+
 (defmacro ns (name :rest bindings)
   (eval `(let ,name '()))
   (dolist (binding bindings)
