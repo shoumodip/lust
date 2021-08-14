@@ -340,7 +340,7 @@ fn length(arguments: Vec<Value>) -> Result {
         match &arguments[0] {
             String(s) | Symbol(s) => Ok(Number(s.len() as f64)),
             List(l) => Ok(Number(l.len() as f64)),
-            _ => Ok(Nil)
+            invalid => Err(format!("invalid sequence '{}'", invalid))
         }
     } else {
         Err(format!("function 'length' takes 1 parameter(s), found {} instead",
@@ -412,7 +412,7 @@ fn reverse(arguments: Vec<Value>) -> Result {
             String(s) => Ok(String(s.chars().rev().collect())),
             Symbol(s) => Ok(Symbol(s.chars().rev().collect())),
             List(l) => Ok(List(l.clone().into_iter().rev().collect())),
-            _ => Ok(Nil)
+            invalid => Err(format!("invalid sequence '{}'", invalid))
         }
     } else {
         Err(format!("function 'reverse' takes 1 parameter(s), found {} instead",
