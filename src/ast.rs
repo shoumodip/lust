@@ -708,7 +708,46 @@ impl Ast {
         }
     }
 
-    fn eval_eval(&mut self, arguments: &[Value]) -> Result {
+    fn eval_quasiquote(&mut self, value: Value) -> Result {
+        use Value::*;
+
+        match value {
+            List(list) => {
+                let mut result = vec![];
+
+                for value in list {
+                    match value.clone() {
+                        List(list) if list.len() > 0 => match list[0].clone() {
+                            Symbol(s) if s == "unquote" => match self.eval(list[1].clone()) {
+                                Ok(value) => result.push(value),
+                                error => return error
+                            },
+                            Symbol(s) if s == "unquote-splice" => {
+                                match list[1].clone() {
+                                    List(list) => result.extend(list),
+                                    symbol => match self.eval(symbol) {
+                                        Ok(List(list)) => result.extend(list),
+                                        Ok(value) => result.push(value),
+                                        error => return error
+                                    }
+                                }
+                            },
+                            _ => match self.eval_quasiquote(List(list)) {
+                                Ok(value) => result.push(value),
+                                error => return error
+                            }
+                        },
+                        value => result.push(value)
+                    }
+                }
+
+                Ok(List(result))
+            },
+            atom => Ok(atom.clone())
+        }
+    }
+
+    pub fn eval_eval(&mut self, arguments: &[Value]) -> Result {
         use Value::*;
 
         if arguments.len() < 1 {
@@ -738,51 +777,49 @@ impl Ast {
         }
     }
 
-    fn eval_quasiquote(&mut self, value: Value) -> Result {
-        use Value::*;
-
-        match value {
-            List(list) => {
-                let mut result = vec![];
-
-                for value in list {
-                    match value.clone() {
-                        List(list) if list.len() > 0 => match list[0].clone() {
-                            Symbol(s) if s == "unquote" => match self.eval(list[1].clone()) {
-                                Ok(value) => result.push(value),
-                                error => return error
-                            },
-
-                            Symbol(s) if s == "unquote-splice" => {
-                                match list[1].clone() {
-                                    List(list) => result.extend(list),
-                                    symbol => match self.eval(symbol) {
-                                        Ok(List(list)) => result.extend(list),
-                                        Ok(value) => result.push(value),
-                                        error => return error
-                                    }
-                                }
-                            },
-
-                            _ => match self.eval_quasiquote(List(list)) {
-                                Ok(value) => result.push(value),
-                                error => return error
-                            }
-                        },
-                        value => result.push(value)
-                    }
-                }
-
-                Ok(List(result))
-            },
-            atom => Ok(atom)
+    fn eval_error(&mut self, arguments: &[Value]) -> Result {
+        if arguments.len() == 1 {
+            match self.eval(arguments[0].clone()) {
+                Ok(message) => Err(message.to_string()),
+                error => error
+            }
+        } else {
+            Err(format!("special form 'error' takes 1 parameter, found {} instead",
+                        arguments.len()))
         }
     }
 
+    fn eval_quote(&self, arguments: &[Value]) -> Result {
+        if arguments.len() == 1 {
+            Ok(arguments[0].clone())
+        } else {
+            Err(format!("special form 'quote' takes 1 parameter, found {} instead",
+                        arguments.len()))
+        }
+    }
+
+    fn eval_return(&mut self, arguments: &[Value]) -> Result {
+        self.flag = BlockFlag::Return;
+
+        if arguments.len() > 0 {
+            self.eval(arguments[0].clone())
+        } else {
+            Ok(Value::Nil)
+        }
+    }
+
+    fn eval_break(&mut self) -> Result {
+        self.flag = BlockFlag::Break;
+        Ok(Value::Nil)
+    }
+
+    fn eval_continue(&mut self) -> Result {
+        self.flag = BlockFlag::Continue;
+        Ok(Value::Nil)
+    }
 
     fn eval_call(&mut self, name: String, arguments: &[Value]) -> Result {
         use Value::*;
-        use BlockFlag::*;
 
         match self.lookup(&name) {
             Ok(value) => match value {
@@ -806,43 +843,16 @@ impl Ast {
                 "while" => self.eval_while(arguments),
                 "lambda" => eval_lambda_form(arguments, false),
                 "macro" => eval_lambda_form(arguments, true),
-                "error" => if arguments.len() == 1 {
-                    match self.eval(arguments[0].clone()) {
-                        Ok(message) => Err(message.to_string()),
-                        error => error
-                    }
-                } else {
-                    Err(format!("special form 'error' takes 1 parameter, found {} instead",
-                               arguments.len()))
-                },
-                "quote" => if arguments.len() == 1 {
-                    Ok(arguments[0].clone())
-                } else {
-                    Err(format!("special form 'quote' takes 1 parameter, found {} instead",
-                               arguments.len()))
-                },
+                "error" => self.eval_error(arguments),
+                "quote" => self.eval_quote(arguments),
                 "quasiquote" => if arguments.len() > 0 {
                     self.eval_quasiquote(arguments[0].clone())
                 } else {
                     Ok(Nil)
                 },
-                "return" => {
-                    self.flag = Return;
-
-                    if arguments.len() > 0 {
-                        self.eval(arguments[0].clone())
-                    } else {
-                        Ok(Nil)
-                    }
-                }
-                "break" => {
-                    self.flag = Break;
-                    Ok(Nil)
-                },
-                "continue" => {
-                    self.flag = Continue;
-                    Ok(Nil)
-                },
+                "return" => self.eval_return(arguments),
+                "break" => self.eval_break(),
+                "continue" => self.eval_continue(),
                 "eval" => self.eval_eval(arguments),
                 "parse" => if arguments.len() == 1 {
                     match self.eval(arguments[0].clone()) {
