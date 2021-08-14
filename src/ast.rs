@@ -809,6 +809,10 @@ impl Ast {
                 "while" => self.eval_while(arguments),
                 "lambda" => eval_lambda_form(arguments, false),
                 "macro" => eval_lambda_form(arguments, true),
+                "error" => match self.eval(arguments[0].clone()) {
+                    Ok(message) => Err(message.to_string()),
+                    error => error
+                }
                 "quote" => if arguments.len() > 0 {
                     Ok(arguments[0].clone())
                 } else {
