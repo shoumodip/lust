@@ -444,7 +444,10 @@ fn concat(arguments: Vec<Value>) -> Result {
     let mut result = String::new();
 
     for value in arguments {
-        result.push_str(&format!("{}", value));
+        match &value {
+            Value::String(s) => result.push_str(s),
+            _ => result.push_str(&value.to_string())
+        }
     }
 
     Ok(Value::String(result))
