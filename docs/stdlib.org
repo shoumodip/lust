@@ -438,6 +438,15 @@ Return the evaluation result.
 (eval "(+ 4 5 6)") ; => 15
 #+end_src
 
+** ~(error MESSAGE)~
+Throw error with message ~MESSAGE~ and halt the program.
+
+#+begin_src lisp
+(error (concat 'foo " is not a number")) ; => error: foo is not a number
+(error 'foobarbaz)                       ; => error: foobarbaz
+(error 420.69)                           ; => error: 420.69
+#+end_src
+
 * Ad-hoc primitives
 ** ~(car LIST)~
 Return the head of ~LIST~.
