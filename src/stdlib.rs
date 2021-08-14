@@ -386,6 +386,24 @@ fn find(arguments: Vec<Value>) -> Result {
     }
 }
 
+fn split(arguments: Vec<Value>) -> Result {
+    use Value::*;
+
+    if arguments.len() == 2 {
+        match &arguments[1] {
+            String(d) | Symbol(d) => match &arguments[0] {
+                Symbol(s) => Ok(List(s.split(d).map(|s| Symbol(s.to_string())).collect())),
+                String(s) => Ok(List(s.split(d).map(|s| String(s.to_string())).collect())),
+                invalid => Err(format!("invalid splittable item '{}'", invalid))
+            },
+            invalid => Err(format!("invalid delimiter '{}'", invalid))
+        }
+    } else {
+        Err(format!("function 'split' takes 2 parameter(s), found {} instead",
+                    arguments.len()))
+    }
+}
+
 fn reverse(arguments: Vec<Value>) -> Result {
     use Value::*;
 
@@ -646,6 +664,7 @@ pub fn load(ast: &mut Ast, arguments: Vec<Value>) {
     ast.define("reverse", Native(reverse));
     ast.define("range", Native(range));
     ast.define("find", Native(find));
+    ast.define("split", Native(split));
 
     ast.run(parser::tokenize("
 (let defun (macro
