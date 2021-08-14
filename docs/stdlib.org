@@ -1046,6 +1046,16 @@ Right fold on ~LIST~ using ~FUNCTION~ with initial value ~INIT~.
 (foldr cons 0 '(1 2 3 4)) ; => (0 4 3 2 1)
 #+end_src
 
+** ~(find PATTERN STRING)~
+Find the index of ~PATTERN~ in ~STRING~. Returns ~-1~ if the pattern
+is not found.
+
+#+begin_src lisp
+(find 'bar 'foobarbaz)    ; => 3
+(find "str" "substring")  ; => 3
+(find "blah" "foobarbaz") ; => -1
+#+end_src
+
 ** ~(zipwith FUNCTION A B)~
 Zip the elements of ~A~ and ~B~ together using ~FUNCTION~.
 
