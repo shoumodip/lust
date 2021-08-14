@@ -157,6 +157,10 @@ impl Scope {
         &mut self.list[0]
     }
 
+    fn last_mut(&mut self) -> Option<&mut Env> {
+        self.list.last_mut()
+    }
+
     fn define(&mut self, symbol: String, value: Value) {
         self.list
             .first_mut()
@@ -504,18 +508,26 @@ impl Ast {
         } else {
             match &arguments[0] {
                 List(scope) => {
-                    let mut env = Env::new();
+                    self.last_scope().push(Env::new());
 
                     for binding in scope.iter() {
                         match binding {
                             List(binding) => match &binding[0] {
                                 Symbol(symbol) => if binding.len() == 2 {
                                     match self.eval(binding[1].clone()) {
-                                        Ok(value) => { env.insert(symbol.to_string(), value); }
+                                        Ok(value) => {
+                                            self.last_scope()
+                                                .last_mut()
+                                                .expect("100% rust bug not mine")
+                                                .insert(symbol.to_string(), value);
+                                        }
                                         error => return error,
                                     }
                                 } else {
-                                    env.insert(symbol.to_string(), Nil);
+                                    self.last_scope()
+                                        .last_mut()
+                                        .expect("100% rust bug not mine")
+                                        .insert(symbol.to_string(), Nil);
                                 },
                                 invalid => return Err(format!("invalid variable '{}' in let", invalid))
                             },
@@ -523,7 +535,6 @@ impl Ast {
                         }
                     }
 
-                    self.last_scope().push(env);
                     let result = self.eval_do(&arguments[1..]);
 
                     self.last_scope().pop();
