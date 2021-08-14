@@ -1080,6 +1080,14 @@ Split ~STRING-LIKE~ by ~DELIM~.
 (split 'foo-bar-baz '-)   ; => ("foo" "bar" "baz")
 #+end_src
 
+** ~(trim STRING-LIKE)~
+Trim ~STRING-LIKE~.
+
+#+begin_src lisp
+(trim "  foo   ")      ; => "foo"
+(trim "  foo  bar   ") ; => "foo  bar"
+#+end_src
+
 ** ~(zipwith FUNCTION A B)~
 Zip the elements of ~A~ and ~B~ together using ~FUNCTION~.
 
