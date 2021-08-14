@@ -343,7 +343,7 @@ impl Ast {
     {
         use BlockFlag::*;
 
-        let parameters_length = parameters.len();
+        let parameters_length = parameters.len() - if variadic { 1 } else { 0 };
         let arguments_length = arguments.len();
 
         if variadic {
@@ -382,7 +382,7 @@ impl Ast {
         if variadic && arguments_length >= parameters_length {
             let mut variadic = vec![];
 
-            for i in parameters_length - 1..arguments_length {
+            for i in parameters_length..arguments_length {
                 if is_macro {
                     variadic.push(arguments[i].clone());
                 } else {
@@ -393,7 +393,7 @@ impl Ast {
                 }
             }
 
-            env.insert(parameters[parameters_length - 1].clone(), Value::List(variadic));
+            env.insert(parameters[parameters_length].clone(), Value::List(variadic));
         }
 
         self.push_scope(Scope::from(env));
