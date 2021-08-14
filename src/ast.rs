@@ -809,14 +809,20 @@ impl Ast {
                 "while" => self.eval_while(arguments),
                 "lambda" => eval_lambda_form(arguments, false),
                 "macro" => eval_lambda_form(arguments, true),
-                "error" => match self.eval(arguments[0].clone()) {
-                    Ok(message) => Err(message.to_string()),
-                    error => error
-                }
-                "quote" => if arguments.len() > 0 {
+                "error" => if arguments.len() == 1 {
+                    match self.eval(arguments[0].clone()) {
+                        Ok(message) => Err(message.to_string()),
+                        error => error
+                    }
+                } else {
+                    Err(format!("special form 'error' takes 1 parameter, found {} instead",
+                               arguments.len()))
+                },
+                "quote" => if arguments.len() == 1 {
                     Ok(arguments[0].clone())
                 } else {
-                    Ok(Nil)
+                    Err(format!("special form 'quote' takes 1 parameter, found {} instead",
+                               arguments.len()))
                 },
                 "quasiquote" => if arguments.len() > 0 {
                     self.eval_quasiquote(arguments[0].clone())
