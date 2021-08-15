@@ -440,17 +440,38 @@ fn reverse(arguments: Vec<Value>) -> Result {
     }
 }
 
-fn concat(arguments: Vec<Value>) -> Result {
-    let mut result = String::new();
+fn join(arguments: Vec<Value>) -> Result {
+    use Value::*;
 
+    if arguments.len() == 2 {
+        match &arguments[0] {
+            List(l) => match &arguments[1] {
+                String(s) | Symbol(s) => Ok(String(l.iter()
+                                                   .map(|v| v.to_string())
+                                                   .collect::<Vec<_>>()
+                                                   .join(s))),
+                invalid => Err(format!("invalid delimiter '{}'", invalid))
+            },
+            invalid => Err(format!("invalid list '{}'", invalid))
+        }
+    } else {
+        Err(format!("function 'join' takes 2 parameter(s), found {} instead",
+                    arguments.len()))
+    }
+}
+
+fn concat(arguments: Vec<Value>) -> Result {
+    use Value::*;
+
+    let mut result = "".to_string();
     for value in arguments {
         match &value {
-            Value::String(s) => result.push_str(s),
+            String(s) => result.push_str(s),
             _ => result.push_str(&value.to_string())
         }
     }
 
-    Ok(Value::String(result))
+    Ok(String(result))
 }
 
 fn string2symbol(arguments: Vec<Value>) -> Result {
@@ -705,6 +726,7 @@ pub fn load(ast: &mut Ast, arguments: Vec<Value>) {
     // QoL functions
     ast.define("length", Native(length));
     ast.define("concat", Native(concat));
+    ast.define("join", Native(join));
     ast.define("reverse", Native(reverse));
     ast.define("range", Native(range));
     ast.define("find", Native(find));
