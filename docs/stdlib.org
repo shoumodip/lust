@@ -1047,6 +1047,14 @@ Like doing ~(map FUNCTION (filter PREDICATE LIST))~.
 (filter-map odd? (lambda (n) (/ n 2)) '(1 2 3 4))  ; => (0.5 1.5)
 #+end_src
 
+** ~(join LIST DELIM)~
+Join the elements of ~LIST~ into a string separated by ~DELIM~.
+
+#+begin_src lisp
+(join '(foo bar baz) '-)            ; => foo-bar-baz
+(join '(69 "is" 'the "answer") " ") ; => "69 is the answer"
+#+end_src
+
 ** ~(foldl INIT FUNCTION LIST)~
 Left fold on ~LIST~ using ~FUNCTION~ with initial value ~INIT~.
 
