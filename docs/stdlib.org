@@ -1039,6 +1039,14 @@ from the items for which ~(PREDICATE item)~ returned a truthy value.
 (filter odd '(1 2 3 4))  ; => (1 3)
 #+end_src
 
+** ~(filter-map PREDICATE FUNCTION LIST)~
+Like doing ~(map FUNCTION (filter PREDICATE LIST))~.
+
+#+begin_src lisp
+(filter-map even? (lambda (n) (* n 2)) '(1 2 3 4)) ; => (4 8)
+(filter-map odd? (lambda (n) (/ n 2)) '(1 2 3 4))  ; => (0.5 1.5)
+#+end_src
+
 ** ~(foldl INIT FUNCTION LIST)~
 Left fold on ~LIST~ using ~FUNCTION~ with initial value ~INIT~.
 
