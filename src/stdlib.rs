@@ -734,7 +734,7 @@ pub fn load(ast: &mut Ast, arguments: Vec<Value>) {
     ast.define("trim", Native(trim));
     ast.define("parse", Native(parse));
 
-    ast.eval_eval(&[String("
+    ast.run(parser::tokenize("
 (let defun (macro
             (name arguments :rest body)
             `(let ,name (lambda ,arguments
@@ -748,6 +748,15 @@ pub fn load(ast: &mut Ast, arguments: Vec<Value>) {
      defvar (macro
              (name value)
              `(let ,name ,value)))
+
+(defmacro eval (expr)
+  (if (string? expr)
+      (parse expr)
+    (if (list? expr)
+        (if (= (nth 0 expr) 'quote)
+            (nth 1 expr)
+          (expr))
+      expr)))
 
 (defun even? (number)
   (= (% number 2) 0))
@@ -817,7 +826,7 @@ pub fn load(ast: &mut Ast, arguments: Vec<Value>) {
 
 (defun load (path)
   (eval (open path)))
-".to_string())]).unwrap();
+".to_string()).expect("100% rust bug not mine")).expect("100% rust bug not mine");
 
     ast.define("args", Value::List(arguments));
 }

@@ -9,8 +9,8 @@ use std::process;
 use ast::{Ast, Value};
 
 fn run_file(path: &str, arguments: Vec<Value>) {
-    let source = fs::read_to_string(path).unwrap_or_else(|error| {
-        eprintln!("lust: could not read file '{}': {}", path, error);
+    let source = fs::read_to_string(path).unwrap_or_else(|_| {
+        eprintln!("lust: could not read file '{}'", path);
         process::exit(1);
     });
 

@@ -426,18 +426,6 @@ fizzbuzz
 Result of f: nil
 #+end_src
 
-** ~(eval SEXP)~
-If ~SEXP~ is a string, interpret it as lust source code. Evaluate all
-other expression types.
-
-Return the evaluation result.
-
-#+begin_src lisp
-(eval 'foo)        ; => foo
-(eval '(+ 1 2 3))  ; => 6
-(eval "(+ 4 5 6)") ; => 15
-#+end_src
-
 ** ~(error MESSAGE)~
 Throw error with message ~MESSAGE~ and halt the program.
 
@@ -993,6 +981,20 @@ Like doing ~(let NAME (macro ARGUMENTS BODY))~.
 
 ;; Print (1 2 3) 2 times
 (echo (1 2 3))
+#+end_src
+
+** ~(eval SEXP)~
+If ~SEXP~ is a string, interpret it as lust source code. Evaluate all
+other expression types.
+
+Return the evaluation result.
+
+#+begin_src lisp
+(let foo 'bar)
+
+(eval 'foo)        ; => bar
+(eval '(+ 1 2 3))  ; => 6
+(eval "(+ 4 5 6)") ; => 15
 #+end_src
 
 ** ~(even? NUMBER)~

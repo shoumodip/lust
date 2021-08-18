@@ -2,8 +2,6 @@ use std::fmt;
 use std::result;
 use std::collections::HashMap;
 
-use crate::parser;
-
 type Env = HashMap<String, Value>;
 type Function = fn(Vec<Value>) -> Result;
 pub type Result = result::Result<Value, String>;
@@ -747,36 +745,6 @@ impl Ast {
         }
     }
 
-    pub fn eval_eval(&mut self, arguments: &[Value]) -> Result {
-        use Value::*;
-
-        if arguments.len() < 1 {
-            Ok(Nil)
-        } else {
-            match self.eval(arguments[0].clone()) {
-                Ok(String(s)) => {
-                    self.calls.push("eval".to_string());
-
-                    match parser::tokenize(s) {
-                        Ok(tokens) => {
-                            self.calls.pop();
-                            match self.run(tokens) {
-                                Some(value) => Ok(value),
-                                None => Ok(Nil)
-                            }
-                        },
-                        Err(message) => Err(message)
-                    }
-                },
-                Ok(sexp) => match self.eval(sexp) {
-                    Ok(value) => self.eval(value),
-                    error => error
-                },
-                error => error
-            }
-        }
-    }
-
     fn eval_error(&mut self, arguments: &[Value]) -> Result {
         if arguments.len() == 1 {
             match self.eval(arguments[0].clone()) {
@@ -853,7 +821,6 @@ impl Ast {
                 "return" => self.eval_return(arguments),
                 "break" => self.eval_break(),
                 "continue" => self.eval_continue(),
-                "eval" => self.eval_eval(arguments),
                 _ => error
             }
         }
